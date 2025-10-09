@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "ESNext",
+    "lib": ["ES2019"],
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "allowImportingTsExtensions": true,
+    "baseUrl": "./src",
+    "paths": {
+      "rn-alpha": ["./rn-alpha/index"],
+      "rn-alpha/*": ["./rn-alpha/*"],
+      "assets/*": ["./assets/*"],
+      "constants/*": ["./constants/*"],
+      "hooks/*": ["./hooks/*"],
+      "navigations/*": ["./navigations/*"],
+      "store/*": ["./store/*"],
+      "utils/*": ["./utils/*"],
+      "components/*": ["./components/*"],
+      "screens/*": ["./screens/*"],
+      "types": ["./types"],
+      "types/*": ["./types/*"]
+    }
+  },
+  "include": [
+    "src/index.ts",
+    "src/rn-alpha/**/*",
+    "src/hooks/**/*",
+    "src/store/**/*",
+    "src/constants/**/*",
+    "src/utils/**/*",
+    "src/components/**/*",
+    "src/assets/**/*",
+    "src/@types/**/*",
+    "src/config.ts",
+    "src/types.ts",
+    "src/paths.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/screens",
+    "src/navigations",
+    "android",
+    "ios"
+  ]
+}
