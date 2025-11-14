@@ -5,7 +5,10 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 // src/hooks/use-query.tsx
-import { useEffect as useEffect3, useMemo as useMemo2 } from "react";
+import { useEffect as useEffect3, useMemo as useMemo2, useRef as useRef2, useCallback as useCallback2 } from "react";
+
+// src/utils/service.ts
+import axios from "axios";
 
 // src/config.ts
 var naira = "\u20A6";
@@ -16,60 +19,146 @@ var config = {
 var config_default = config;
 
 // src/utils/service.ts
-async function http(path, method, data, status, auth, text) {
-  let headers = {};
-  if (auth) {
-    headers = {
-      "Auth_IDToken": auth
-    };
-  }
-  method = method || "GET";
-  let query = "";
-  if (method === "GET") {
-    for (const [i, key2] of Object.keys(data).entries()) {
-      query += `${i === 0 ? "?" : "&"}${key2}=${data[key2]}`;
-    }
-  }
-  let formBody = void 0;
-  if (data) {
-    formBody = [];
-    for (let property in data) {
-      let encodedKey = encodeURIComponent(property);
-      let encodedValue = encodeURIComponent(data[property]);
-      formBody.push(encodedKey + "=" + encodedValue);
-    }
-    formBody = formBody.join("&");
-  }
-  const url = config_default.baseUrl + path + query;
-  const init = {
-    method,
+var createAxiosInstance = () => {
+  const instance = axios.create({
+    baseURL: config_default.baseUrl,
+    timeout: 3e4,
+    // 30 seconds default
     headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...headers
-    },
-    body: method === "GET" ? void 0 : data && formBody
-  };
-  return new Promise((resolve, reject) => {
-    fetch(url, init).then(async (response) => {
-      if (status) return {
+      Accept: "application/json"
+    }
+  });
+  instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (axios.isCancel(error) || error.name === "AbortError") {
+        return Promise.reject(error);
+      }
+      if (!error.response) {
+        return Promise.resolve({
+          data: {
+            error: error.message || "Network error occurred"
+          },
+          status: 500
+        });
+      }
+      return Promise.resolve(error.response);
+    }
+  );
+  return instance;
+};
+var axiosInstance = createAxiosInstance();
+var formatUrlEncoded = (data) => {
+  const formBody = [];
+  for (const property in data) {
+    const encodedKey = encodeURIComponent(property);
+    const encodedValue = encodeURIComponent(data[property]);
+    formBody.push(`${encodedKey}=${encodedValue}`);
+  }
+  return formBody.join("&");
+};
+var formatFormData = (data) => {
+  const formData = new FormData();
+  for (const key2 in data) {
+    formData.append(key2, data[key2]);
+  }
+  return formData;
+};
+var getContentTypeHeader = (contentType) => {
+  switch (contentType) {
+    case "urlencoded":
+      return "application/x-www-form-urlencoded";
+    case "multipart":
+      return "multipart/form-data";
+    case "json":
+    default:
+      return "application/json";
+  }
+};
+var formatRequestData = (data, contentType, method) => {
+  if (method === "GET") {
+    return void 0;
+  }
+  if (!data) {
+    return void 0;
+  }
+  switch (contentType) {
+    case "urlencoded":
+      return formatUrlEncoded(data);
+    case "multipart":
+      return formatFormData(data);
+    case "json":
+    default:
+      return data;
+  }
+};
+async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, legacyReturnText) {
+  var _a;
+  let options;
+  if (typeof optionsOrStatus === "boolean") {
+    options = {
+      returnStatus: optionsOrStatus,
+      auth: legacyAuth,
+      returnText: legacyReturnText,
+      contentType: "urlencoded"
+      // Legacy default
+    };
+  } else {
+    options = optionsOrStatus || {};
+  }
+  const {
+    auth,
+    contentType = "json",
+    signal,
+    timeout,
+    returnStatus = true,
+    returnText = false
+  } = options;
+  try {
+    const headers = {
+      "Content-Type": getContentTypeHeader(contentType)
+    };
+    if (auth) {
+      headers["Auth_IDToken"] = auth;
+    }
+    const config2 = {
+      method,
+      url: path,
+      headers,
+      signal,
+      timeout: timeout || 3e4
+    };
+    if (method === "GET" && data) {
+      config2.params = data;
+    } else {
+      config2.data = formatRequestData(data, contentType, method);
+    }
+    const response = await axiosInstance.request(config2);
+    if (returnStatus) {
+      return {
         data: {
-          data: await (text ? response.text().catch(() => {
-          }) : response.json().catch(() => {
-          }))
+          data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data
         },
         status: response.status
       };
-      return response.json().catch(() => {
-      });
-    }).then((res) => {
-      resolve(res);
-    }).catch((error) => {
-      resolve({ data: { error: error == null ? void 0 : error.message }, status: 500 });
-    });
-  });
+    }
+    return response.data;
+  } catch (error) {
+    if (axios.isCancel(error) || error.name === "AbortError") {
+      throw error;
+    }
+    return {
+      data: {
+        error: error.message || "An error occurred"
+      },
+      status: ((_a = error.response) == null ? void 0 : _a.status) || 500
+    };
+  }
 }
 var service_default = http;
+var isAbortError = (error) => {
+  return axios.isCancel(error) || error.name === "AbortError" || error.name === "CanceledError";
+};
 
 // src/store/reducers/cache-reducer.tsx
 import { createSlice } from "@reduxjs/toolkit";
@@ -130,8 +219,6 @@ var initialState2 = {
     customerId: "",
     user: {}
   },
-  colorMode: "light",
-  systemColor: false,
   registered: false,
   deviceId: uuid.v4(),
   email: "",
@@ -168,14 +255,8 @@ var appSlice = createSlice2({
     setImage(state, action) {
       state.image = action.payload;
     },
-    setColorMode(state, action) {
-      state.colorMode = action.payload;
-    },
     setRegistered(state, action) {
       state.registered = action.payload;
-    },
-    setSystemColor(state, action) {
-      state.systemColor = action.payload;
     },
     setDefaultPassword(state, action) {
       state.defaultPassword = action.payload;
@@ -252,7 +333,6 @@ var Toast = (message, duration) => {
 var toast_default = Toast;
 
 // src/store/contexts/app-context.tsx
-import { useColorScheme } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 // src/hooks/use-selector.tsx
@@ -286,7 +366,6 @@ var AppProvider = ({ children }) => {
       unsubscribe();
     };
   }, []);
-  const isDarkMode = useColorScheme() === "dark";
   const func = useMemo(
     () => ({
       setAuth: (payload) => {
@@ -303,14 +382,6 @@ var AppProvider = ({ children }) => {
       },
       setRegistered: (payload) => {
         dispatch(actions2.setRegistered(payload));
-      },
-      setColorMode: (payload) => {
-        dispatch(actions2.setSystemColor(false));
-        dispatch(actions2.setColorMode(payload));
-      },
-      setSystemColor: (payload) => {
-        dispatch(actions2.setColorMode(isDarkMode ? "dark" : "light"));
-        dispatch(actions2.setSystemColor(payload));
       },
       setDefaultPassword: (payload) => {
         dispatch(actions2.setDefaultPassword(payload));
@@ -338,7 +409,7 @@ var AppProvider = ({ children }) => {
         });
       }
     }),
-    [dispatch, isDarkMode, reset]
+    [dispatch, reset]
   );
   const value = useMemo(
     () => ({ ...state, connected, ...func }),
@@ -366,6 +437,834 @@ var threadSlice = createSlice3({
 });
 var actions3 = threadSlice.actions;
 var thread_reducer_default = threadSlice.reducer;
+
+// src/hooks/use-cache.tsx
+import { useCallback } from "react";
+
+// src/paths.ts
+var PATHS = {
+  login: "POST:/Authenticate",
+  biometricAuth: "POST:/TouchAuthenticate",
+  generateOtp: "POST:/GenerateOTP",
+  validateOtp: "POST:/ValidateOTP",
+  register: "POST:/CreateNewAccount",
+  forgot: "POST:/ForgotPassword",
+  getAccounts: "GET:/GetAccounts/:customerId",
+  getTransferAccounts: "GET:/GetTransferAccounts/:customerId",
+  getCustomer: "GET:/GetCustomer/:customerId",
+  getBvnDetails: "POST:/GetBVNDetails",
+  validateOTPBVN: "POST:/ValidateOTPBVN",
+  registerDevice: "POST:/RegisterDeviceUUID/:customerId",
+  accountStatement: "POST:/GetAccountStatement/:customerId/:accountNumber",
+  loanHistory: "POST:/GetLoanHistory/:customerId",
+  customerSummary: "GET:/GetCustomerSummary/:customerId",
+  accountHistory: "POST:/GetAccountHistory/:customerId/:accountNumber",
+  downloadStatement: "POST:/DownloadAccountStatement/:customerId/:accountNumber",
+  changePassword: "POST:/ChangePassword/:customerId",
+  changePin: "POST:/SaveSecurityPin/:customerId",
+  deleteBeneficiary: "POST:/DeleteBeneficiary/:customerId",
+  addBeneficiary: "POST:/AddBeneficiary/:customerId",
+  getBeneficiaries: "GET:/GetBeneficiary/:customerId",
+  confirmBeneficiary: "POST:/ConfirmBeneficiary/:customerId",
+  getBanks: "POST:/GetBanks",
+  transferHistory: "POST:/GetRecentTransfer/:customerId",
+  transferBeneficiary: "POST:/TransferFunds/:customerId",
+  transfer: "POST:/TransferFundsMixed/:customerId",
+  airtime: "POST:/PayAirtimeBills/:customerId",
+  bill: "POST:/PayBills/:customerId",
+  billHistory: "POST:/GetBillHistory/:customerId",
+  billerCategories: "GET:/GetBillerCategory/:customerId",
+  billers: "POST:/GetBillers/:customerId",
+  billerProduct: "POST:/GetProducts/:customerId",
+  validateBillCustomer: "POST:/ValidateBillCustomer/:customerId",
+  getDeposit: "GET:/GetDeposits/:customerId",
+  getSavings: "GET:/GetSavings/:customerId",
+  createSavings: "POST:/AddNewTargetSavings/:customerId",
+  getLoans: "GET:/GetLoans/:customerId",
+  liqudateDeposit: "POST:/LiqudateDeposit/:customerId",
+  getInvestmentRate: "POST:/GetInvestmentRate/:customerId",
+  createDeposit: "POST:/BookDeposits/:customerId",
+  getCards: "POST:/GetCards/:customerId",
+  fundWallet: "POST:/FundSavings/:customerId",
+  requestLoan: "POST:/LoanRequest/:customerId",
+  calculateLTV: "GET:/CalculateLTV/:customerId",
+  updateSavings: "POST:/UpdateSavings/:customerId",
+  closeSavings: "POST:/CloseSavings/:customerId",
+  savings: "GET:/savings/:itemId",
+  savingsWithdrawal: "POST:/WithdrawSavings/:customerId",
+  registerToken: "POST:/AddFirebaseDetails/:customerId",
+  feedback: "POST:/SendFeedback/:customerId",
+  blockCard: "POST:/BlockCard/:customerId",
+  requestCard: "POST:/RequestCard/:customerId",
+  verifyNin: "POST:/VerifyNIN/:customerId",
+  updateLocationId: "POST:/updateLocationId/:customerId"
+};
+var paths_default = PATHS;
+
+// src/hooks/utils/route-parser.ts
+function parseRoute(route, variables = {}, customerId) {
+  const rawPath = paths_default[route] || route;
+  const [method, pathTemplate] = rawPath.split(":/");
+  const variablesCopy = { ...variables };
+  const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
+    const params = { customerId, ...variablesCopy };
+    const paramName = matched.replace(/\W/g, "");
+    delete variablesCopy[paramName];
+    return params[paramName] || matched;
+  });
+  const key2 = path + JSON.stringify(variablesCopy);
+  return {
+    path,
+    method: method || "GET",
+    key: key2,
+    rawPath
+  };
+}
+
+// src/hooks/use-cache.tsx
+var useCache = () => {
+  const dispatch = use_dispatch_default();
+  const { auth: { customerId } } = useApp();
+  const cacheState = use_selector_default((state) => state.cache);
+  const getContext = useCallback(
+    (route, variables) => {
+      return parseRoute(route, variables, customerId);
+    },
+    [customerId]
+  );
+  const getKey = useCallback(
+    (route, variables) => {
+      const { key: key2 } = getContext(route, variables);
+      return key2;
+    },
+    [getContext]
+  );
+  const getData = useCallback(
+    (key2) => {
+      return cacheState[key2];
+    },
+    [cacheState]
+  );
+  const setCache = useCallback(
+    (key2, value) => {
+      dispatch(actions.set({ key: key2, value }));
+    },
+    [dispatch]
+  );
+  const update = useCallback(
+    (key2, value) => {
+      setCache(key2, value);
+    },
+    [setCache]
+  );
+  const updateItem = useCallback(
+    (key2, id, value) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        const index = cache.findIndex((item) => item._id === id);
+        if (index !== -1) {
+          const updated = [...cache];
+          updated[index] = { ...updated[index], ...value };
+          setCache(key2, updated);
+        }
+      }
+    },
+    [cacheState, setCache]
+  );
+  const getItem = useCallback(
+    (key2, id) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        return cache.find((item) => item._id === id);
+      }
+      return void 0;
+    },
+    [cacheState]
+  );
+  const updateValue = useCallback(
+    (key2, arg, value) => {
+      const cache = cacheState[key2];
+      if (!Array.isArray(cache) && typeof cache === "object") {
+        setCache(key2, { ...cache, [arg]: value });
+      }
+    },
+    [cacheState, setCache]
+  );
+  const updateValues = useCallback(
+    (key2, values) => {
+      const cache = cacheState[key2];
+      if (!Array.isArray(cache) && typeof cache === "object") {
+        setCache(key2, { ...cache, ...values });
+      }
+    },
+    [cacheState, setCache]
+  );
+  const prepend = useCallback(
+    (key2, data) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        setCache(key2, [data, ...cache]);
+      } else {
+        setCache(key2, [data]);
+      }
+    },
+    [cacheState, setCache]
+  );
+  const updateOrPrepend = useCallback(
+    (key2, data) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        const index = cache.findIndex((item) => item._id === data._id);
+        if (index !== -1) {
+          const updated = [...cache];
+          updated[index] = { ...updated[index], ...data };
+          setCache(key2, updated);
+        } else {
+          setCache(key2, [data, ...cache]);
+        }
+      } else {
+        setCache(key2, [data]);
+      }
+    },
+    [cacheState, setCache]
+  );
+  const append = useCallback(
+    (key2, data) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        setCache(key2, [...cache, data]);
+      } else {
+        setCache(key2, [data]);
+      }
+    },
+    [cacheState, setCache]
+  );
+  const deleteItem = useCallback(
+    (key2, id) => {
+      const cache = cacheState[key2];
+      if (Array.isArray(cache)) {
+        setCache(key2, cache.filter((item) => item._id !== id));
+      }
+    },
+    [cacheState, setCache]
+  );
+  return {
+    getItem,
+    setCache,
+    getKey,
+    getContext,
+    getData,
+    update,
+    updateValue,
+    updateValues,
+    updateItem,
+    deleteItem,
+    prepend,
+    append,
+    updateOrPrepend
+  };
+};
+var use_cache_default = useCache;
+
+// src/hooks/constants.ts
+var NETWORK_TIMEOUT = 1e4;
+var ERROR_MESSAGES = {
+  GENERIC: "Oops! an error occurred",
+  NETWORK: "Network error occurred",
+  TIMEOUT: "Request timed out",
+  SESSION_EXPIRED: "Session expired! kindly login",
+  UNAUTHORIZED: "Unauthorized access"
+};
+
+// src/hooks/utils/error-handler.ts
+function extractErrorMessage(response, defaultMessage = "Oops! an error occurred") {
+  var _a, _b, _c, _d;
+  if (typeof response === "string") {
+    return response;
+  }
+  return ((_b = (_a = response == null ? void 0 : response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || ((_c = response == null ? void 0 : response.data) == null ? void 0 : _c.ResponseDescription) || ((_d = response == null ? void 0 : response.data) == null ? void 0 : _d.error) || (response == null ? void 0 : response.error) || (response == null ? void 0 : response.message) || defaultMessage;
+}
+function isSuccessStatus(status) {
+  return [200, 201].includes(status);
+}
+function isAuthError(status) {
+  return [401, 404].includes(status);
+}
+function createErrorResponse(error, status = 500) {
+  const message = typeof error === "string" ? error : error.message;
+  return {
+    error: message || "Oops! an error occurred",
+    status
+  };
+}
+function createSuccessResponse(data, status = 200) {
+  return {
+    data,
+    status
+  };
+}
+function isAbortError2(error) {
+  var _a, _b;
+  if (!error) return false;
+  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
+}
+
+// src/hooks/use-query.tsx
+var useQuery = (route, args) => {
+  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
+  const app = useApp();
+  const { auth } = app;
+  const cache = use_cache_default();
+  const { key: key2, path, method } = cache.getContext(route, variables);
+  const policy = networkPolicy || "cache-first";
+  const data = use_selector_default((state) => state.cache[key2]);
+  const thread = use_selector_default((state) => state.tread[key2]);
+  const dispatch = use_dispatch_default();
+  const { connected } = useSocket();
+  const timeoutRef = useRef2(null);
+  const abortControllerRef = useRef2(null);
+  useEffect3(() => {
+    if (data && onCompleted) {
+      onCompleted(data);
+    }
+    if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
+      refetch({});
+    }
+  }, [data, connected, thread == null ? void 0 : thread.error]);
+  useEffect3(() => {
+    fetchData(variables);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  useEffect3(() => {
+    if (init && init.timestamp > ((data == null ? void 0 : data.timestamp) || 0)) {
+      dispatch(actions.init({ key: key2, value: init }));
+    }
+  }, [init == null ? void 0 : init.timestamp, key2, dispatch, data == null ? void 0 : data.timestamp]);
+  const setThread = useCallback2(
+    (loading, error) => {
+      dispatch(
+        actions3.set({
+          key: key2,
+          value: {
+            loading,
+            error
+          }
+        })
+      );
+    },
+    [dispatch, key2]
+  );
+  const fetchData = useCallback2(
+    (fetchVariables) => {
+      switch (policy) {
+        case "cache-only":
+          return;
+        case "network-only":
+          fetchHandler(fetchVariables).catch(() => {
+          });
+          return;
+        case "cache-first":
+          if (!data) {
+            fetchHandler(fetchVariables).catch(() => {
+            });
+          }
+          return;
+        case "network-and-cache":
+          fetchHandler(fetchVariables).catch(() => {
+          });
+          timeoutRef.current = setTimeout(() => {
+            const currentThread = thread;
+            if (currentThread == null ? void 0 : currentThread.loading) {
+              refetch({});
+            }
+          }, NETWORK_TIMEOUT);
+          return;
+      }
+    },
+    [policy, data, thread]
+  );
+  const fetchHandler = useCallback2(
+    async (fetchVariables, isRefetch = false) => {
+      try {
+        if (!(thread == null ? void 0 : thread.loading) || (thread == null ? void 0 : thread.error) || isRefetch) {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+          abortControllerRef.current = new AbortController();
+          setThread(true);
+          const res = await service_default(
+            path,
+            method || "GET",
+            fetchVariables,
+            {
+              returnStatus: true,
+              auth: auth.accessToken,
+              signal: abortControllerRef.current.signal
+            }
+          );
+          const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+          setThread(false, error);
+          if (isSuccessStatus(res.status) && res.data.data) {
+            if (onCompleted) {
+              onCompleted(res.data.data);
+            }
+            cache.setCache(key2, res.data.data);
+          } else if (isAuthError(res.status)) {
+            app.setTimeout().catch(() => {
+            });
+          } else if (error && onError) {
+            onError(error, res.status);
+          }
+        }
+      } catch (e) {
+        if (isAbortError2(e)) {
+          return;
+        }
+        const error = e.message || "Oops! an error occurred";
+        setThread(false, error);
+        if (onError) {
+          onError(error, 500);
+        }
+      }
+    },
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key2, app]
+  );
+  const refetch = useCallback2(
+    (refetchVariables) => {
+      fetchHandler({ ...variables, ...refetchVariables || {} }, true).catch(() => {
+      });
+    },
+    [fetchHandler, variables]
+  );
+  const fetchMore = useCallback2(
+    async (fetchMoreVariables, concat, paginationKey) => {
+      try {
+        const fetchMoreController = new AbortController();
+        const res = await service_default(
+          path,
+          method || "GET",
+          { ...variables, ...fetchMoreVariables || {} },
+          {
+            returnStatus: true,
+            auth: auth == null ? void 0 : auth.accessToken,
+            signal: fetchMoreController.signal
+          }
+        );
+        const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+        if (isSuccessStatus(res.status)) {
+          if (concat === "start") {
+            dispatch(actions.prepend({ key: key2, value: res.data.data }));
+          } else if (concat === "end") {
+            dispatch(actions.append({ key: key2, value: res.data.data }));
+          } else if (concat === "pagination") {
+            dispatch(
+              actions.paginate({
+                key: key2,
+                data: res.data.data,
+                paginationKey: paginationKey || "data"
+              })
+            );
+          }
+          return { data: res.data.data };
+        } else if (isAuthError(res.status)) {
+          app.setTimeout().catch(() => {
+          });
+          return { error };
+        }
+        return { error };
+      } catch (e) {
+        if (isAbortError2(e)) {
+          return { error: "Request cancelled" };
+        }
+        const error = e.message || "Oops! an error occurred";
+        return { error };
+      }
+    },
+    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key2, app]
+  );
+  const abort = useCallback2(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+  const extendCache = useMemo2(
+    () => ({
+      update: (newData) => {
+        cache.update(key2, newData);
+      },
+      updateValue: (arg, value) => {
+        cache.updateValue(key2, arg, value);
+      },
+      updateValues: (values) => {
+        cache.updateValues(key2, values);
+      },
+      updateItem: (id, value) => {
+        cache.updateItem(key2, id, value);
+      },
+      deleteItem: (id) => {
+        cache.deleteItem(key2, id);
+      },
+      prepend: (newData) => {
+        cache.prepend(key2, newData);
+      },
+      append: (newData) => {
+        cache.append(key2, newData);
+      }
+    }),
+    [key2, cache]
+  );
+  return {
+    data: data || init,
+    loading: (thread == null ? void 0 : thread.loading) || false,
+    error: thread == null ? void 0 : thread.error,
+    refetch,
+    key: key2,
+    fetchMore,
+    abort,
+    ...extendCache
+  };
+};
+var use_query_default = useQuery;
+
+// src/hooks/use-query-async.tsx
+var useQueryAsync = () => {
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = use_cache_default();
+  const dispatch = use_dispatch_default();
+  return async (route, variables = {}, options) => {
+    const { key: key2, method, path } = getContext(route, variables);
+    const opts = typeof options === "string" ? { authToken: options } : options || {};
+    try {
+      dispatch(
+        actions3.set({
+          key: key2,
+          value: {
+            loading: true,
+            error: void 0
+          }
+        })
+      );
+      const res = await service_default(
+        path,
+        method || "GET",
+        variables,
+        {
+          returnStatus: true,
+          auth: opts.authToken || auth.accessToken,
+          signal: opts.signal
+        }
+      );
+      const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+      dispatch(
+        actions3.set({
+          key: key2,
+          value: {
+            loading: false,
+            error
+          }
+        })
+      );
+      if (isSuccessStatus(res.status)) {
+        dispatch(actions.set({ key: key2, value: res.data.data }));
+        return createSuccessResponse(res.data.data, res.status);
+      } else if (isAuthError(res.status)) {
+        app.setTimeout().catch(() => {
+        });
+        return createErrorResponse(error || "Unauthorized", res.status);
+      }
+      return createErrorResponse(error || "Request failed", res.status);
+    } catch (e) {
+      if (isAbortError2(e)) {
+        dispatch(
+          actions3.set({
+            key: key2,
+            value: {
+              loading: false,
+              error: void 0
+            }
+          })
+        );
+        return createErrorResponse("Request cancelled", 0);
+      }
+      const error = e.message || "Oops! an error occurred";
+      dispatch(
+        actions3.set({
+          key: key2,
+          value: {
+            loading: false,
+            error
+          }
+        })
+      );
+      return createErrorResponse(error, 500);
+    }
+  };
+};
+var use_query_async_default = useQueryAsync;
+
+// src/hooks/use-mutation.tsx
+import { useState as useState3, useCallback as useCallback3, useRef as useRef3, useEffect as useEffect4 } from "react";
+import { Keyboard } from "react-native";
+var useMutation = (route, option) => {
+  const [loading, setLoading] = useState3(false);
+  const [error, setError] = useState3(void 0);
+  const [data, setData] = useState3(void 0);
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = use_cache_default();
+  const abortControllerRef = useRef3(null);
+  useEffect4(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  const mutate = useCallback3(
+    async (variables) => {
+      try {
+        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
+          Keyboard.dismiss();
+        }
+        const { path, method, rawPath } = getContext(route, variables);
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        setLoading(true);
+        setError(void 0);
+        const res = await service_default(
+          path,
+          method || "POST",
+          variables,
+          {
+            returnStatus: true,
+            auth: auth == null ? void 0 : auth.accessToken,
+            returnText: option == null ? void 0 : option.text,
+            signal: abortControllerRef.current.signal
+          }
+        );
+        if (isSuccessStatus(res.status)) {
+          const responseData = res.data.data;
+          setData(responseData);
+          setLoading(false);
+          return createSuccessResponse(responseData, res.status);
+        }
+        let errorMessage = extractErrorMessage(res);
+        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
+          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
+          await app.setTimeout();
+        }
+        setError(errorMessage);
+        setLoading(false);
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e) {
+        if (isAbortError2(e)) {
+          setLoading(false);
+          return createErrorResponse("Request cancelled", 0);
+        }
+        setLoading(false);
+        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+        setError(errorMessage);
+        return createErrorResponse(errorMessage, 500);
+      }
+    },
+    [route, option, auth, app, getContext]
+  );
+  const cancel = useCallback3(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+  return [
+    mutate,
+    {
+      loading,
+      error,
+      data,
+      cancel
+    }
+  ];
+};
+var use_mutation_default = useMutation;
+
+// src/hooks/use-mutation-async.tsx
+import { useState as useState4, useCallback as useCallback4, useRef as useRef4, useEffect as useEffect5 } from "react";
+import { Keyboard as Keyboard2 } from "react-native";
+var useMutationAsync = (route, option) => {
+  const [loading, setLoading] = useState4(false);
+  const [error, setError] = useState4(void 0);
+  const [data, setData] = useState4(void 0);
+  const app = useApp();
+  const { auth } = app;
+  const abortControllerRef = useRef4(null);
+  useEffect5(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  const mutate = useCallback4(
+    async (variables) => {
+      try {
+        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
+          Keyboard2.dismiss();
+        }
+        const [method, pathTemplate] = route.split(":/");
+        const variablesCopy = { ...variables };
+        const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
+          const paramName = matched.replace(/\W/g, "");
+          const value = variablesCopy[paramName];
+          delete variablesCopy[paramName];
+          return value || matched;
+        });
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        setLoading(true);
+        setError(void 0);
+        const res = await service_default(
+          path,
+          method || "POST",
+          variablesCopy,
+          {
+            returnStatus: true,
+            auth: auth.accessToken,
+            signal: abortControllerRef.current.signal
+          }
+        );
+        if (isSuccessStatus(res.status)) {
+          const responseData = res.data.data;
+          setData(responseData);
+          setLoading(false);
+          return createSuccessResponse(responseData, res.status);
+        }
+        if (isAuthError(res.status)) {
+          await app.setTimeout();
+        }
+        const errorMessage = extractErrorMessage(res);
+        setError(errorMessage);
+        setLoading(false);
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e) {
+        if (isAbortError2(e)) {
+          setLoading(false);
+          return createErrorResponse("Request cancelled", 0);
+        }
+        setLoading(false);
+        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+        setError(errorMessage);
+        return createErrorResponse(errorMessage, 500);
+      }
+    },
+    [route, option, auth, app]
+  );
+  const cancel = useCallback4(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+  return [
+    mutate,
+    {
+      loading,
+      error,
+      data,
+      cancel
+    }
+  ];
+};
+var use_mutation_async_default = useMutationAsync;
+
+// src/utils/http-helpers.ts
+var createAbortController = () => {
+  return new AbortController();
+};
+var isAbortError3 = (error) => {
+  var _a, _b;
+  if (!error) return false;
+  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
+};
+var isCancelError = (error) => {
+  return isAbortError3(error);
+};
+var shouldRetry = (error) => {
+  var _a, _b;
+  if (isAbortError3(error)) {
+    return false;
+  }
+  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
+    return false;
+  }
+  return true;
+};
+var formatFormData2 = (data) => {
+  const formData = new FormData();
+  for (const key2 in data) {
+    if (data.hasOwnProperty(key2)) {
+      const value = data[key2];
+      if (value !== null && value !== void 0) {
+        formData.append(key2, value);
+      }
+    }
+  }
+  return formData;
+};
+var formatUrlEncoded2 = (data) => {
+  const formBody = [];
+  for (const property in data) {
+    if (data.hasOwnProperty(property)) {
+      const value = data[property];
+      if (value !== null && value !== void 0) {
+        const encodedKey = encodeURIComponent(property);
+        const encodedValue = encodeURIComponent(value);
+        formBody.push(`${encodedKey}=${encodedValue}`);
+      }
+    }
+  }
+  return formBody.join("&");
+};
+var safeAbort = (controller) => {
+  if (controller && !controller.signal.aborted) {
+    controller.abort();
+  }
+};
+var createTimeoutController = (timeoutMs) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+  };
+  return { controller, cleanup };
+};
+var combineAbortSignals = (signals) => {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      break;
+    }
+    signal.addEventListener("abort", () => {
+      controller.abort();
+    }, { once: true });
+  }
+  return controller;
+};
 
 // src/utils/storage.ts
 import { MMKV } from "react-native-mmkv";
@@ -435,734 +1334,6 @@ store.subscribe(() => {
   saveToLocalStorage(store.getState());
 });
 
-// src/paths.ts
-var PATHS = {
-  login: "POST:/Authenticate",
-  biometricAuth: "POST:/TouchAuthenticate",
-  generateOtp: "POST:/GenerateOTP",
-  validateOtp: "POST:/ValidateOTP",
-  register: "POST:/CreateNewAccount",
-  forgot: "POST:/ForgotPassword",
-  getAccounts: "GET:/GetAccounts/:customerId",
-  getTransferAccounts: "GET:/GetTransferAccounts/:customerId",
-  getCustomer: "GET:/GetCustomer/:customerId",
-  getBvnDetails: "POST:/GetBVNDetails",
-  validateOTPBVN: "POST:/ValidateOTPBVN",
-  registerDevice: "POST:/RegisterDeviceUUID/:customerId",
-  accountStatement: "POST:/GetAccountStatement/:customerId/:accountNumber",
-  loanHistory: "POST:/GetLoanHistory/:customerId",
-  customerSummary: "GET:/GetCustomerSummary/:customerId",
-  accountHistory: "POST:/GetAccountHistory/:customerId/:accountNumber",
-  downloadStatement: "POST:/DownloadAccountStatement/:customerId/:accountNumber",
-  changePassword: "POST:/ChangePassword/:customerId",
-  changePin: "POST:/SaveSecurityPin/:customerId",
-  deleteBeneficiary: "POST:/DeleteBeneficiary/:customerId",
-  addBeneficiary: "POST:/AddBeneficiary/:customerId",
-  getBeneficiaries: "GET:/GetBeneficiary/:customerId",
-  confirmBeneficiary: "POST:/ConfirmBeneficiary/:customerId",
-  getBanks: "POST:/GetBanks",
-  transferHistory: "POST:/GetRecentTransfer/:customerId",
-  transferBeneficiary: "POST:/TransferFunds/:customerId",
-  transfer: "POST:/TransferFundsMixed/:customerId",
-  airtime: "POST:/PayAirtimeBills/:customerId",
-  bill: "POST:/PayBills/:customerId",
-  billHistory: "POST:/GetBillHistory/:customerId",
-  billerCategories: "GET:/GetBillerCategory/:customerId",
-  billers: "POST:/GetBillers/:customerId",
-  billerProduct: "POST:/GetProducts/:customerId",
-  validateBillCustomer: "POST:/ValidateBillCustomer/:customerId",
-  getDeposit: "GET:/GetDeposits/:customerId",
-  getSavings: "GET:/GetSavings/:customerId",
-  createSavings: "POST:/AddNewTargetSavings/:customerId",
-  getLoans: "GET:/GetLoans/:customerId",
-  liqudateDeposit: "POST:/LiqudateDeposit/:customerId",
-  getInvestmentRate: "POST:/GetInvestmentRate/:customerId",
-  createDeposit: "POST:/BookDeposits/:customerId",
-  getCards: "POST:/GetCards/:customerId",
-  fundWallet: "POST:/FundSavings/:customerId",
-  requestLoan: "POST:/LoanRequest/:customerId",
-  calculateLTV: "GET:/CalculateLTV/:customerId",
-  updateSavings: "POST:/UpdateSavings/:customerId",
-  closeSavings: "POST:/CloseSavings/:customerId",
-  savings: "GET:/savings/:itemId",
-  savingsWithdrawal: "POST:/WithdrawSavings/:customerId",
-  registerToken: "POST:/AddFirebaseDetails/:customerId",
-  feedback: "POST:/SendFeedback/:customerId",
-  blockCard: "POST:/BlockCard/:customerId",
-  requestCard: "POST:/RequestCard/:customerId",
-  verifyNin: "POST:/VerifyNIN/:customerId",
-  updateLocationId: "POST:/updateLocationId/:customerId"
-};
-var paths_default = PATHS;
-
-// src/hooks/use-cache.tsx
-var useCache = () => {
-  const dispatch = use_dispatch_default();
-  const { auth: { customerId } } = useApp();
-  const getContext = (route, variables) => {
-    const param = paths_default[route] || route;
-    const split = param.split(":/");
-    const method = split[0];
-    const path = "/" + (split == null ? void 0 : split[1].replace(/:\w+/g, (matched) => {
-      const spr = { customerId, ...variables };
-      const key3 = matched.replace(/\W/g, "");
-      delete variables[key3];
-      return spr[key3];
-    }));
-    const key2 = path + JSON.stringify(variables || {});
-    return { path, method, key: key2, rawPath: param };
-  };
-  const getKey = (route, variables) => {
-    const { key: key2 } = getContext(route, variables);
-    return key2;
-  };
-  const getData = (key2) => {
-    return store.getState().cache[key2];
-  };
-  const update = (key2, value) => {
-    setCache(key2, value);
-  };
-  const setCache = (key2, value) => {
-    dispatch(actions.set({ key: key2, value }));
-  };
-  const updateItem = (key2, id, value) => {
-    const cache = store.getState().cache[key2];
-    if (Array.isArray(cache)) {
-      const spr = [...cache];
-      const i = cache.findIndex((r) => r._id === id);
-      spr[i] = { ...spr[i], ...value };
-      setCache(key2, spr);
-    }
-  };
-  const getItem = (key2, id) => {
-    var _a;
-    const cache = store.getState().cache[key2];
-    return (_a = cache.filter((r) => r._id === id)) == null ? void 0 : _a[0];
-  };
-  const updateValue = (key2, arg, value) => {
-    const cache = store.getState().cache[key2];
-    if (!Array.isArray(cache)) {
-      setCache(key2, { ...cache, [arg]: value });
-    }
-  };
-  const updateValues = (key2, values) => {
-    const cache = store.getState().cache[key2];
-    if (!Array.isArray(cache)) {
-      setCache(key2, { ...cache, ...values });
-    }
-  };
-  const prepend = (key2, data) => {
-    const cache = store.getState().cache[key2];
-    if (Array.isArray(cache)) {
-      setCache(key2, [data].concat(cache));
-    }
-  };
-  const updateOrPrepend = (key2, data) => {
-    const cache = store.getState().cache[key2];
-    if (Array.isArray(cache)) {
-      const spr = [...cache];
-      const i = cache.findIndex((r) => r._id === data._id);
-      if (i > -1) {
-        spr[i] = { ...spr[i], ...data };
-        setCache(key2, spr);
-      } else {
-        setCache(key2, [data].concat(cache));
-      }
-    }
-  };
-  const append = (key2, data) => {
-    const cache = store.getState().cache[key2];
-    if (Array.isArray(cache)) {
-      setCache(key2, cache.concat([data]));
-    }
-  };
-  const deleteItem = (key2, id) => {
-    const cache = store.getState().cache[key2];
-    if (Array.isArray(cache)) {
-      setCache(key2, cache.filter((r) => r._id !== id));
-    }
-  };
-  return {
-    getItem,
-    setCache,
-    getKey,
-    getContext,
-    getData,
-    update,
-    updateValue,
-    updateValues,
-    updateItem,
-    deleteItem,
-    prepend,
-    append,
-    updateOrPrepend
-  };
-};
-var use_cache_default = useCache;
-
-// src/hooks/use-query.tsx
-var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted } = args || {};
-  const { auth } = useApp();
-  const app = useApp();
-  const cache = use_cache_default();
-  const { key: key2, path, method } = cache.getContext(route, variables);
-  const policy = networkPolicy || "cache-first";
-  const data = use_selector_default((state) => state.cache[key2]);
-  const thread = use_selector_default((state) => state.tread[key2]);
-  const dispatch = use_dispatch_default();
-  const { connected } = useSocket();
-  useEffect3(() => {
-    var _a;
-    if (data) {
-      (_a = args == null ? void 0 : args.onCompleted) == null ? void 0 : _a.call(args, data);
-    }
-    if (connected && (thread == null ? void 0 : thread.error) && (!data || (data == null ? void 0 : data.length) < 1)) {
-      refetch({});
-    }
-  }, [connected]);
-  useEffect3(() => {
-    fetch2(variables || {});
-  }, []);
-  useEffect3(() => {
-    if (init) {
-      const data2 = store.getState().cache[key2];
-      if ((init == null ? void 0 : init.timestamp) > ((data2 == null ? void 0 : data2.timestamp) || 0)) {
-        dispatch(actions.init({ key: key2, value: init }));
-      }
-    }
-  }, [init == null ? void 0 : init.timestamp]);
-  const setThread = (key3, loading, error) => {
-    dispatch(actions3.set({
-      key: key3,
-      value: {
-        loading,
-        error
-      }
-    }));
-  };
-  const fetch2 = (variables2) => {
-    switch (policy) {
-      case "cache-only":
-        return;
-      case "network-only":
-        fetchHandler(variables2).catch(() => {
-        });
-        return;
-      case "cache-first":
-        if (!data) {
-          fetchHandler(variables2).catch(() => {
-          });
-        }
-        return;
-      case "network-and-cache":
-        fetchHandler(variables2).catch(() => {
-        });
-        setTimeout(() => {
-          const thread2 = store.getState().tread[key2];
-          if (thread2 == null ? void 0 : thread2.loading) {
-            console.log("still loading");
-            refetch({});
-          }
-        }, 10 * 1e3);
-        return;
-    }
-  };
-  const fetchHandler = async (variables2, refetch2) => {
-    var _a, _b, _c, _d, _e;
-    try {
-      const thread2 = store.getState().tread[key2];
-      if (!thread2 || !(thread2 == null ? void 0 : thread2.loading) || (thread2 == null ? void 0 : thread2.error) || refetch2) {
-        setThread(key2, true);
-        const res = await service_default(path, method || "GET", variables2, true, auth.accessToken);
-        const error = res.status !== 200 ? ((_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || "Oops! an error occurred" : void 0;
-        setThread(key2, false, error);
-        console.log(path, res.status);
-        if (res.status === 200 && res.data.data) {
-          (_c = args == null ? void 0 : args.onCompleted) == null ? void 0 : _c.call(args, res.data.data);
-          cache.setCache(key2, res.data.data);
-        } else if ([401, 404].includes(res.status)) {
-          app.setTimeout().catch(() => {
-          });
-        } else if (error) {
-          (_d = args == null ? void 0 : args.onError) == null ? void 0 : _d.call(args, error, res.status);
-        }
-      }
-    } catch (e) {
-      const error = e.message || "Oops! an error occurred";
-      setThread(key2, false, error);
-      (_e = args == null ? void 0 : args.onError) == null ? void 0 : _e.call(args, error, 500);
-    }
-  };
-  const refetch = (args2) => {
-    fetchHandler({ ...variables, ...args2 || {} }, true).catch(() => {
-    });
-  };
-  const fetchMore = async (args2, concat, paginationKey) => {
-    var _a, _b;
-    const res = await service_default(path, method || "GET", { ...variables, ...args2 || {} }, true, auth == null ? void 0 : auth.accessToken);
-    const error = res.status !== 200 ? ((_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || "Oops! an error occurred" : void 0;
-    if (res.status === 200) {
-      if (concat === "start") {
-        dispatch(actions.prepend({ key: key2, value: res.data.data }));
-      } else if (concat === "end") {
-        dispatch(actions.prepend({ key: key2, value: res.data.data }));
-      } else if (concat === "pagination") {
-        dispatch(actions.paginate({ key: key2, data: res.data.data, paginationKey: paginationKey || "data" }));
-      }
-      return { data: res.data.data };
-    } else if (res.status === 401) {
-      app.setTimeout().catch(() => {
-      });
-      return { error };
-    }
-    return { error };
-  };
-  const extendCache = useMemo2(() => ({
-    update: (data2) => {
-      cache.update(key2, data2);
-    },
-    updateValue: (arg, value) => {
-      cache.updateValue(key2, arg, value);
-    },
-    updateValues: (values) => {
-      cache.updateValues(key2, values);
-    },
-    updateItem: (id, value) => {
-      cache.updateItem(key2, id, value);
-    },
-    deleteItem: (id) => {
-      cache.deleteItem(key2, id);
-    },
-    prepend: (data2) => {
-      cache.prepend(key2, data2);
-    },
-    append: (data2) => {
-      cache.append(key2, data2);
-    }
-  }), []);
-  return {
-    data: data || init,
-    loading: thread == null ? void 0 : thread.loading,
-    error: thread == null ? void 0 : thread.error,
-    refetch,
-    key: key2,
-    fetchMore,
-    ...extendCache
-  };
-};
-var use_query_default = useQuery;
-
-// src/hooks/use-query-async.tsx
-var useQueryAsync = () => {
-  const { auth } = useApp();
-  const app = useApp();
-  const { getContext } = use_cache_default();
-  const dispatch = use_dispatch_default();
-  return async (route, variables, authToken) => {
-    var _a, _b;
-    const { key: key2, method, path } = getContext(route, variables);
-    try {
-      dispatch(actions3.set({
-        key: key2,
-        value: {
-          loading: true,
-          error: void 0
-        }
-      }));
-      const res = await service_default(path, method || "GET", variables || {}, true, authToken || auth.accessToken);
-      const error = res.status !== 200 ? ((_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || "Oops! an error occurred" : void 0;
-      dispatch(actions3.set({
-        key: key2,
-        value: {
-          loading: false,
-          error
-        }
-      }));
-      if (res.status === 200) {
-        dispatch(actions.set({ key: key2, value: res.data.data }));
-      } else if (res.status === 401) {
-        app.setTimeout().catch(() => {
-        });
-      }
-    } catch (e) {
-      const error = e.message || "Oops! an error occurred";
-      dispatch(actions3.set({
-        key: key2,
-        value: {
-          loading: false,
-          error
-        }
-      }));
-    }
-  };
-};
-var use_query_async_default = useQueryAsync;
-
-// src/constants/colors.ts
-var keys = {
-  primary: "#0095E0",
-  primaryLight: "#57A4FF1A",
-  primaryShade: "#b2ddf8",
-  secondary: "#102441",
-  tertiary: "#BEBEBE",
-  danger: "#FE0000",
-  dangerLight: "#FF00331E",
-  success: "green",
-  warning: "#FAA417",
-  warningLight: "rgba(250, 164, 23, 0.08)",
-  medium: "#92949c",
-  mediumShade: "#e6ecf0",
-  mediumTint: "#9d9fa6",
-  dark: "#242526",
-  darkShade: "#3a3b3c",
-  darkTint: "#191a1b",
-  light: "#ffffff",
-  lightShade: "#f9f9fd",
-  lightTint: "#f5f6f9",
-  modal: "rgba(0,0,0,0.5)",
-  overlay: "rgba(0,0,0,0.21)",
-  transparent: "rgba(245,246,249,0)",
-  placeholder: "#92949c",
-  dim: "#15202b",
-  orange: "#f7d5ad",
-  wood: "#f6efd6",
-  black: "#000000",
-  cover: "#434C6D"
-};
-var scheme = {
-  light: {
-    ...keys,
-    text: keys.black,
-    text2: "#636A64",
-    background: keys.light,
-    border: "rgba(153, 153, 153, 0.24)",
-    shade: "rgba(113, 159, 228, 0.12)",
-    touchable: keys.mediumShade,
-    gap: "#f9f9fd",
-    tint: keys.lightTint,
-    check: keys.primary,
-    navigation: "#f9f9fd",
-    progress: "#e6ecf0",
-    chat: keys.primary,
-    spotlight: "#F1F6FA"
-  },
-  dark: {
-    ...keys,
-    primaryLight: keys.darkShade,
-    text: "#f4f5f8",
-    text2: "#91949B",
-    background: keys.dark,
-    border: "#38444d",
-    shade: keys.darkShade,
-    touchable: keys.darkTint,
-    gap: keys.darkTint,
-    mediumShade: "#3a3b3c",
-    tint: keys.darkTint,
-    check: keys.light,
-    navigation: keys.darkTint,
-    progress: keys.darkShade,
-    chat: "#ffffff",
-    spotlight: "rgb(24,24,25)"
-  }
-};
-var Colors = (value) => {
-  return scheme[value];
-};
-var colors_default = Colors;
-
-// src/hooks/use-color.tsx
-var useColor = () => {
-  const { colorMode, setColorMode, systemColor, setSystemColor } = useApp();
-  return {
-    colors: colors_default(colorMode),
-    setColorMode,
-    colorMode,
-    systemColor,
-    setSystemColor
-  };
-};
-var use_color_default = useColor;
-
-// src/hooks/use-mutation.tsx
-import { useState as useState3, useCallback } from "react";
-import { Keyboard } from "react-native";
-var useMutation = (route, option) => {
-  const [loading, setLoading] = useState3(false);
-  const [error, setError] = useState3(void 0);
-  const { auth, setTimeout: setTimeout2 } = useApp();
-  const [data, setData] = useState3();
-  const { getContext } = use_cache_default();
-  const mutate = useCallback(async (variables) => {
-    var _a, _b;
-    try {
-      if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-        Keyboard.dismiss();
-      }
-      const { path, method, rawPath } = getContext(route, variables);
-      setLoading(true);
-      console.log(variables);
-      const res = await service_default(path, method || "POST", variables, true, auth == null ? void 0 : auth.accessToken, option == null ? void 0 : option.text);
-      console.log(res);
-      if ([200, 201].includes(res.status)) {
-        setData(res.data.data);
-        setLoading(false);
-        return { data: res.data.data, status: res.status };
-      }
-      let error2 = ((_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || "Oops! an error occurred";
-      if (rawPath.includes(":customerId") && [401, 404].includes(res.status)) {
-        error2 = "Session expired! kindly login";
-        await setTimeout2();
-      }
-      setError(error2);
-      setLoading(false);
-      return { error: error2, status: res.status };
-    } catch (e) {
-      setLoading(false);
-      return { error: e.message || "Oops! an error occurred", status: 500 };
-    }
-  }, []);
-  return {
-    mutate,
-    loading,
-    error,
-    data
-  };
-};
-var use_mutation_default = useMutation;
-
-// src/hooks/use-mutation-async.tsx
-import { useState as useState4, useCallback as useCallback2 } from "react";
-import { Keyboard as Keyboard2 } from "react-native";
-var useMutation2 = (route, option) => {
-  const [loading, setLoading] = useState4(false);
-  const [error, setError] = useState4(void 0);
-  const { auth, setTimeout: setTimeout2 } = useApp();
-  const [data, setData] = useState4();
-  const { setCache, getKey } = use_cache_default();
-  const mutate = useCallback2(async (variables) => {
-    var _a, _b;
-    try {
-      if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-        Keyboard2.dismiss();
-      }
-      const split = route.split(":/");
-      const method = split[0];
-      const path = "/" + split[1].replace(/:\w+/g, (matched) => {
-        const spr = { ...variables || {} };
-        const key2 = matched.replace(/\W/g, "");
-        delete variables[key2];
-        return spr[key2];
-      });
-      setLoading(true);
-      const res = await service_default(path, method || "POST", variables, true, auth.accessToken);
-      if ([200, 201].includes(res.status)) {
-        setData(res.data);
-        setLoading(false);
-        return { data: res.data.data, status: res.status };
-      }
-      if (!route.includes(paths_default.login) && [401, 404].includes(res.status)) {
-        await setTimeout2();
-      }
-      const error2 = ((_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || "Oops! an error occurred";
-      setError(error2);
-      setLoading(false);
-      return { error: error2, status: res.status };
-    } catch (e) {
-      setLoading(false);
-      return { error: e.message || "Oops! and error occurred", status: 500 };
-    }
-  }, []);
-  const query = async (route2, variables, authToken) => {
-    var _a;
-    try {
-      setLoading(true);
-      const split = route2.split(":/");
-      const method = split[0];
-      const path = "/" + split[1].replace(/:\w+/g, (matched) => {
-        const spr = { ...variables || {} };
-        const key2 = matched.replace(/\W/g, "");
-        delete variables[key2];
-        return spr[key2];
-      });
-      const res = await service_default(path, method || "GET", variables || {}, true, authToken || auth.accessToken);
-      const error2 = res.status !== 200 ? ((_a = res.data) == null ? void 0 : _a.error) || "Oops! an error occurred" : void 0;
-      setLoading(false);
-      if (res.status === 200) {
-        const key2 = getKey(route2, variables);
-        setCache(key2, res.data.data);
-        return { status: res.status, data: res.data.data };
-      }
-      if (!route2.includes(paths_default.login) && [401, 404].includes(res.status)) {
-        await setTimeout2();
-        return { error: error2, status: res.status };
-      }
-      return { error: error2 };
-    } catch (e) {
-      setLoading(false);
-      return { error: e.message || "Oops! and error occurred", status: 500 };
-    }
-  };
-  return {
-    mutate,
-    loading,
-    error,
-    data,
-    query
-  };
-};
-var use_mutation_async_default = useMutation2;
-
-// src/constants/elevation.ts
-var elevation = (key2) => {
-  let value;
-  switch (key2) {
-    case 1:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 1
-          //"/2 floor/d 1"
-        },
-        shadowOpacity: 0.18,
-        //"2/4"
-        shadowRadius: 1,
-        elevation: 1
-      };
-      break;
-    case 2:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 1
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
-        // 0.41
-        elevation: 2
-      };
-      break;
-    case 3:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 1
-        },
-        shadowOpacity: 0.22,
-        shadowRadius: 2.22,
-        // 0.81
-        elevation: 3
-      };
-      break;
-    case 4:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
-        // 0.40
-        elevation: 4
-      };
-      break;
-    case 5:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        // 1.22
-        elevation: 5
-      };
-      break;
-    case 6:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 3
-        },
-        shadowOpacity: 0.27,
-        shadowRadius: 4.65,
-        // 0.81
-        elevation: 6
-      };
-      break;
-    case 7:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 3
-        },
-        shadowOpacity: 0.29,
-        shadowRadius: 4.65,
-        // 0
-        elevation: 7
-      };
-      break;
-    case 8:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 4
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 4.65,
-        // 0
-        elevation: 8
-      };
-      break;
-    case 9:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 4
-        },
-        shadowOpacity: 0.32,
-        shadowRadius: 5.46,
-        //0.81
-        elevation: 9
-      };
-      break;
-    case 10:
-      value = {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 5
-        },
-        shadowOpacity: 0.34,
-        shadowRadius: 6.27,
-        // 0.81 0.41 0.81
-        elevation: 10
-      };
-      break;
-    default:
-      value = {};
-  }
-  return value;
-};
-
-// src/constants/layout.ts
-import { Dimensions, Platform, StatusBar } from "react-native";
-var width = Dimensions.get("window").width;
-var height = Dimensions.get("window").height;
-var ios = Platform.OS === "ios";
-var android = Platform.OS === "android";
-var isSmallDevice = width < 375;
-var statusHeight = ios ? StatusBar.currentHeight || 42 : 0;
-
 // src/utils/money.ts
 function money(num, decimal) {
   if (num || num === 0) {
@@ -1190,31 +1361,36 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 export {
   app_context_default as AppProvider,
-  colors_default as Colors,
   paths_default as PATHS,
   config as alphaConfig,
-  android,
-  scheme as colorScheme,
+  combineAbortSignals,
+  createAbortController,
+  createErrorResponse,
+  createSuccessResponse,
+  createTimeoutController,
   dayjs,
   decrypt,
-  elevation,
   encrypt,
+  extractErrorMessage,
+  formatFormData2 as formatFormData,
   money_default as formatMoney,
-  height,
-  ios,
-  isSmallDevice,
-  statusHeight,
+  formatUrlEncoded2 as formatUrlEncoded,
+  isAbortError3 as isAbortError,
+  isAuthError,
+  isCancelError,
+  isAbortError as isHttpAbortError,
+  isSuccessStatus,
+  safeAbort,
+  shouldRetry,
   storage_default as storage,
   store,
   useApp,
   use_cache_default as useCache,
-  use_color_default as useColor,
   use_dispatch_default as useDispatch,
   use_mutation_default as useMutation,
   use_mutation_async_default as useMutationAsync,
   use_query_default as useQuery,
   use_query_async_default as useQueryAsync,
-  use_selector_default as useSelector,
-  width
+  use_selector_default as useSelector
 };
 //# sourceMappingURL=index.mjs.map

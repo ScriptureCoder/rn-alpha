@@ -1,200 +1,311 @@
-import { useEffect, useMemo } from "react";
-import http from "../utils/service";
-import {useApp} from "store/contexts/app-context";
+import { useEffect, useMemo, useRef, useCallback } from "react";
+import http, { Method } from "../utils/service";
+import { useApp } from "../store/contexts/app-context";
 import useDispatch from "./use-dispatch";
 import useSelector from "./use-selector";
-import {actions} from "store/reducers/cache-reducer";
+import { actions } from "../store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
-import {store} from "store";
 import useCache from "./use-cache";
-import {useSocket} from "store/contexts/socket-context";
-import {Route} from "types";
+import { useSocket } from "../store/contexts/socket-context";
+import { Route } from "../types";
+import { QueryOptions, QueryResult } from "./types";
+import { NetworkPolicy, NETWORK_TIMEOUT } from "./constants";
+import {
+  extractErrorMessage,
+  isSuccessStatus,
+  isAuthError,
+  isAbortError,
+} from "./utils/error-handler";
 
-type Props = {
-    data:any|any[]
-    loading:boolean
-    error:string|undefined
-    key:string
-    refetch:(variables?:any)=>void
-    fetchMore:(variables?:any,concat?:'start'|'end'|'pagination', paginationKey?:string)=>Promise<any>
-    update:(data:any)=>void
-    updateValue:(arg:string,value:any)=>void
-    updateValues:(values:any)=>void
-    updateItem:(id:string,value:any)=>void
-    deleteItem:(id:string)=>void
-    prepend:(data:any)=>void
-    append:(data:any)=>void
-};
+/**
+ * Custom hook for data fetching with caching support
+ * @param route - The API route key
+ * @param args - Query options including variables, network policy, callbacks
+ * @returns QueryResult with data, loading state, and cache manipulation functions
+ */
+const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
+  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
+  const app = useApp();
+  const { auth } = app;
+  const cache = useCache();
+  const { key, path, method } = cache.getContext(route, variables);
+  const policy: NetworkPolicy = networkPolicy || "cache-first";
 
-type NetworkPolicy = 'network-and-cache'|'cache-only'|'network-only'|'cache-first'
+  const data = useSelector((state) => state.cache[key]);
+  const thread = useSelector((state) => state.tread[key]);
 
-type Args = {
-    variables?:any
-    networkPolicy?:NetworkPolicy
-    init?:any
-    onCompleted?:(data:any)=>void
-    onError?:(error:any, status?:number)=>void
-}
+  const dispatch = useDispatch();
+  const { connected } = useSocket();
+  
+  // Use ref to store timeout ID for cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Use ref to store abort controller for request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-const useQuery=(route:Route, args?:Args):Props=> {
-    const { variables={}, networkPolicy, init, onCompleted } = args||{};
-    const {auth} = useApp();
-    const app = useApp();
-    const cache = useCache()
-    const {key, path, method}= cache.getContext(route, variables)
-    const policy = networkPolicy||"cache-first"
-
-    const data = useSelector((state)=>state.cache[key]);
-    const thread = useSelector((state)=>state.tread[key]);
-
-    const dispatch = useDispatch();
-    const { connected } = useSocket();
-
-    useEffect(()=>{
-        if (data){
-            args?.onCompleted?.(data)
-        }
-        if (connected && thread?.error && (!data || data?.length<1)) {
-            refetch({})
-        }
-    },[connected]);
-
-    useEffect(() => {
-        fetch(variables||{})
-    }, []);
-
-    useEffect(()=>{
-        if (init){
-            const data = store.getState().cache[key];
-            if (init?.timestamp > (data?.timestamp||0)){
-                dispatch(actions.init({key:key, value:init}))
-            }
-        }
-    },[init?.timestamp]);
-
-    const setThread=(key:string, loading:boolean, error?:any)=>{
-        dispatch(network.actions.set({
-            key,
-            value: {
-                loading,
-                error
-            }
-        }))
+  // Handle data completion and retry on connection
+  useEffect(() => {
+    if (data && onCompleted) {
+      onCompleted(data);
     }
-
-    const fetch=(variables:any)=>{
-        switch (policy){
-            case "cache-only":
-                return;
-            case "network-only":
-                fetchHandler(variables).catch(()=>{})
-                return;
-            case "cache-first":
-                if (!data){
-                    fetchHandler(variables).catch(()=>{})
-                }
-                return;
-            case "network-and-cache":
-                fetchHandler(variables).catch(()=>{})
-                setTimeout(()=>{
-                    const thread = store.getState().tread[key]
-                    if (thread?.loading){
-                        console.log("still loading");
-                        refetch({})
-                    }
-                },10 * 1000)
-                return;
-        }
+    if (connected && thread?.error && (!data || (Array.isArray(data) && data.length < 1))) {
+      refetch({});
     }
+  }, [data, connected, thread?.error]);
 
-    const fetchHandler = async (variables:any, refetch?:boolean)=>{
-        try {
-            const thread = store.getState().tread[key];
-            if (!thread || !thread?.loading || thread?.error || refetch){
-                setThread(key, true);
-                const res:any = await http(path,method||"GET", variables, true, auth.accessToken)
-                const error = res.status!==200?res.data?.data?.ResponseDescription || "Oops! an error occurred":undefined;
-                setThread(key, false, error);
-                console.log(path, res.status);
-                if (res.status === 200 && res.data.data){
-                    args?.onCompleted?.(res.data.data)
-                    cache.setCache(key, res.data.data)
-                }
-                else if([401,404].includes(res.status)) {
-                    app.setTimeout().catch(()=>{})
-                }
-                else if (error){
-                    args?.onError?.(error, res.status)
-                }
-            }
-        }catch (e:any){
-            const error = e.message||"Oops! an error occurred"
-            setThread(key, false, error);
-            args?.onError?.(error, 500)
-        }
-    }
-
-    const refetch =(args:any)=>{
-        fetchHandler({...variables, ...(args||{}) }, true).catch(()=>{})
-    }
-
-    const fetchMore = async (args:any,concat?:'start'|'end'|'pagination', paginationKey?:string)=>{
-        const res:any = await http(path,method||"GET", { ...variables, ...(args||{}) }, true, auth?.accessToken)
-        const error = res.status!==200?res.data?.data?.ResponseDescription||"Oops! an error occurred":undefined
-        if (res.status === 200){
-            if (concat==='start'){
-                dispatch(actions.prepend({key, value:res.data.data}))
-            }
-            else if (concat==='end'){
-                dispatch(actions.prepend({key, value:res.data.data}))
-            }
-            else if (concat==='pagination'){
-                dispatch(actions.paginate({key, data:res.data.data, paginationKey:paginationKey||"data"}))
-            }
-            return {data:res.data.data}
-        }
-        else if(res.status === 401) {
-            app.setTimeout().catch(()=>{})
-            return {error}
-        }
-        return {error}
-    }
-
-    const extendCache = useMemo(() => ({
-        update:(data:any)=>{
-            cache.update(key, data)
-        },
-        updateValue:(arg:string,value:any)=>{
-            cache.updateValue(key, arg, value)
-        },
-        updateValues:(values:any)=>{
-            cache.updateValues(key, values)
-        },
-        updateItem:(id:string,value:any)=>{
-            cache.updateItem(key, id, value)
-        },
-        deleteItem:(id:string)=>{
-            cache.deleteItem(key, id)
-        },
-        prepend:(data:any)=>{
-            cache.prepend(key, data)
-        },
-        append:(data:any)=>{
-            cache.append(key, data)
-        },
-    }),[]);
-
-    return {
-        data:data || init,
-        loading:thread?.loading,
-        error:thread?.error,
-        refetch,
-        key:key,
-        fetchMore,
-        ...extendCache
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchData(variables);
+    
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
+  }, []);
+
+  // Handle initial data
+  useEffect(() => {
+    if (init && init.timestamp > (data?.timestamp || 0)) {
+      dispatch(actions.init({ key, value: init }));
+    }
+  }, [init?.timestamp, key, dispatch, data?.timestamp]);
+
+  /**
+   * Sets the loading/error state for this query
+   */
+  const setThread = useCallback(
+    (loading: boolean, error?: string) => {
+      dispatch(
+        network.actions.set({
+          key,
+          value: {
+            loading,
+            error,
+          },
+        })
+      );
+    },
+    [dispatch, key]
+  );
+
+  /**
+   * Main fetch logic based on network policy
+   */
+  const fetchData = useCallback(
+    (fetchVariables: Record<string, any>) => {
+      switch (policy) {
+        case "cache-only":
+          return;
+        case "network-only":
+          fetchHandler(fetchVariables).catch(() => {});
+          return;
+        case "cache-first":
+          if (!data) {
+            fetchHandler(fetchVariables).catch(() => {});
+          }
+          return;
+        case "network-and-cache":
+          fetchHandler(fetchVariables).catch(() => {});
+          timeoutRef.current = setTimeout(() => {
+            const currentThread = thread;
+            if (currentThread?.loading) {
+              refetch({});
+            }
+          }, NETWORK_TIMEOUT);
+          return;
+      }
+    },
+    [policy, data, thread]
+  );
+
+  /**
+   * Handles the actual HTTP request
+   */
+  const fetchHandler = useCallback(
+    async (fetchVariables: Record<string, any>, isRefetch: boolean = false) => {
+      try {
+        // Only fetch if not currently loading or if it's a refetch or there's an error
+        if (!thread?.loading || thread?.error || isRefetch) {
+          // Abort any existing request
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+          
+          // Create new abort controller for this request
+          abortControllerRef.current = new AbortController();
+          
+          setThread(true);
+          
+          const res: any = await http(
+            path,
+            (method as Method) || "GET",
+            fetchVariables,
+            {
+              returnStatus: true,
+              auth: auth.accessToken,
+              signal: abortControllerRef.current.signal,
+            }
+          );
+          
+          const error = !isSuccessStatus(res.status)
+            ? extractErrorMessage(res)
+            : undefined;
+          
+          setThread(false, error);
+
+          if (isSuccessStatus(res.status) && res.data.data) {
+            if (onCompleted) {
+              onCompleted(res.data.data);
+            }
+            cache.setCache(key, res.data.data);
+          } else if (isAuthError(res.status)) {
+            app.setTimeout().catch(() => {});
+          } else if (error && onError) {
+            onError(error, res.status);
+          }
+        }
+      } catch (e: any) {
+        // Ignore abort errors - they're intentional cancellations
+        if (isAbortError(e)) {
+          return;
+        }
+        
+        const error = e.message || "Oops! an error occurred";
+        setThread(false, error);
+        if (onError) {
+          onError(error, 500);
+        }
+      }
+    },
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
+  );
+
+  /**
+   * Refetches data with optional new variables
+   */
+  const refetch = useCallback(
+    (refetchVariables?: Record<string, any>) => {
+      fetchHandler({ ...variables, ...(refetchVariables || {}) }, true).catch(() => {});
+    },
+    [fetchHandler, variables]
+  );
+
+  /**
+   * Fetches more data and concatenates with existing data
+   */
+  const fetchMore = useCallback(
+    async (
+      fetchMoreVariables?: Record<string, any>,
+      concat?: "start" | "end" | "pagination",
+      paginationKey?: string
+    ) => {
+      try {
+        // Create abort controller for fetchMore
+        const fetchMoreController = new AbortController();
+        
+        const res: any = await http(
+          path,
+          (method as Method) || "GET",
+          { ...variables, ...(fetchMoreVariables || {}) },
+          {
+            returnStatus: true,
+            auth: auth?.accessToken,
+            signal: fetchMoreController.signal,
+          }
+        );
+        
+        const error = !isSuccessStatus(res.status)
+          ? extractErrorMessage(res)
+          : undefined;
+
+        if (isSuccessStatus(res.status)) {
+          if (concat === "start") {
+            dispatch(actions.prepend({ key, value: res.data.data }));
+          } else if (concat === "end") {
+            dispatch(actions.append({ key, value: res.data.data }));
+          } else if (concat === "pagination") {
+            dispatch(
+              actions.paginate({
+                key,
+                data: res.data.data,
+                paginationKey: paginationKey || "data",
+              })
+            );
+          }
+          return { data: res.data.data };
+        } else if (isAuthError(res.status)) {
+          app.setTimeout().catch(() => {});
+          return { error };
+        }
+        return { error };
+      } catch (e: any) {
+        // Handle abort errors
+        if (isAbortError(e)) {
+          return { error: "Request cancelled" };
+        }
+        
+        const error = e.message || "Oops! an error occurred";
+        return { error };
+      }
+    },
+    [path, method, variables, auth?.accessToken, dispatch, key, app]
+  );
+
+  /**
+   * Aborts the current request
+   */
+  const abort = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Cache manipulation functions bound to current key
+   */
+  const extendCache = useMemo(
+    () => ({
+      update: (newData: any) => {
+        cache.update(key, newData);
+      },
+      updateValue: (arg: string, value: any) => {
+        cache.updateValue(key, arg, value);
+      },
+      updateValues: (values: Record<string, any>) => {
+        cache.updateValues(key, values);
+      },
+      updateItem: (id: string, value: any) => {
+        cache.updateItem(key, id, value);
+      },
+      deleteItem: (id: string) => {
+        cache.deleteItem(key, id);
+      },
+      prepend: (newData: any) => {
+        cache.prepend(key, newData);
+      },
+      append: (newData: any) => {
+        cache.append(key, newData);
+      },
+    }),
+    [key, cache]
+  );
+
+  return {
+    data: data || init,
+    loading: thread?.loading || false,
+    error: thread?.error,
+    refetch,
+    key,
+    fetchMore,
+    abort,
+    ...extendCache,
+  };
 };
-
-
 
 export default useQuery;

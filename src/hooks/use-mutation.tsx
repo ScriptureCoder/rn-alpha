@@ -1,75 +1,141 @@
-import {useState, useCallback} from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 import http, { Method } from "../utils/service";
-import { useApp } from "store/contexts/app-context";
+import { useApp } from "../store/contexts/app-context";
 import { Keyboard } from "react-native";
-import PATH from "../paths";
-import useCache from './use-cache';
-import {Route} from "types";
-import Toast from "utils/toast";
+import { Route } from "../types";
+import useCache from "./use-cache";
+import { MutationOptions, MutationResult, MutationResponse } from "./types";
+import {
+  extractErrorMessage,
+  isSuccessStatus,
+  isAuthError,
+  isAbortError,
+  createErrorResponse,
+  createSuccessResponse,
+} from "./utils/error-handler";
+import { ERROR_MESSAGES } from "./constants";
 
-type Response = {
-	error?:string
-	data?:any
-	status?:number
-}
+/**
+ * Custom hook for data mutations (POST, PUT, DELETE operations)
+ * @param route - The API route key
+ * @param option - Mutation options (keyboard dismiss, text response)
+ * @returns MutationResult with mutate function, loading state, error, and data
+ */
+const useMutation = <T = any,>(
+  route: Route,
+  option?: MutationOptions
+): MutationResult<T> => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [data, setData] = useState<T | undefined>(undefined);
 
-export type UseMutationProps = {
-	loading:boolean,
-	error?:string|string[]
-	mutate:(variables:any)=>Promise<Response>
-	data?:any
-}
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = useCache();
+  
+  // Store abort controller for request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
-type Option = {
-	keyboard?:boolean
-	text?:boolean
-}
+  /**
+   * Performs the mutation request
+   * @param variables - Request variables
+   * @returns Promise with response data or error
+   */
+  const mutate = useCallback(
+    async (variables: Record<string, any>): Promise<MutationResponse<T>> => {
+      try {
+        // Dismiss keyboard by default
+        if (option?.keyboard === undefined || option?.keyboard) {
+          Keyboard.dismiss();
+        }
 
-const useMutation = (route:Route,option?:Option):UseMutationProps => {
-	const [loading,setLoading] = useState(false);
-	const [error,setError] = useState(undefined);
-	const {auth,setTimeout} = useApp();
-	const [data,setData] = useState<any>();
-	const {getContext} = useCache()
+        const { path, method, rawPath } = getContext(route, variables);
+        
+        // Abort any existing request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        
+        // Create new abort controller
+        abortControllerRef.current = new AbortController();
+        
+        setLoading(true);
+        setError(undefined);
 
-	const mutate = useCallback(async (variables:any):Promise<Response>=>{
-		try {
-			if (option?.keyboard === undefined || option?.keyboard){
-				Keyboard.dismiss()
-			}
-			const {path, method, rawPath}= getContext(route, variables)
-			setLoading(true)
-			console.log(variables);
-			const res:any = await http(path,method||"POST", variables,true,auth?.accessToken, option?.text)
-			console.log(res);
-			if ([200,201].includes(res.status)){
-				setData(res.data.data)
-				setLoading(false)
-				return {data:res.data.data,status:res.status}
-			}
-			let error = res.data?.data?.ResponseDescription || "Oops! an error occurred";
+        const res: any = await http(
+          path,
+          (method as Method) || "POST",
+          variables,
+          {
+            returnStatus: true,
+            auth: auth?.accessToken,
+            returnText: option?.text,
+            signal: abortControllerRef.current.signal,
+          }
+        );
 
+        if (isSuccessStatus(res.status)) {
+          const responseData = res.data.data;
+          setData(responseData);
+          setLoading(false);
+          return createSuccessResponse(responseData, res.status);
+        }
 
-			if (rawPath.includes(":customerId") && [401,404].includes(res.status)){
-				error = "Session expired! kindly login"
-				await setTimeout()
-			}
+        let errorMessage = extractErrorMessage(res);
 
-			setError(error)
-			setLoading(false)
-			return {error,status:res.status}
-		}catch (e:any){
-			setLoading(false)
-			return {error:e.message||"Oops! an error occurred",status:500}
-		}
-	},[])
+        // Check for auth errors
+        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
+          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
+          await app.setTimeout();
+        }
 
-    return {
-		mutate,
-	    loading,
-	    error,
-	    data,
-	};
+        setError(errorMessage);
+        setLoading(false);
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e: any) {
+        // Handle abort errors - don't set error state for cancellations
+        if (isAbortError(e)) {
+          setLoading(false);
+          return createErrorResponse("Request cancelled", 0);
+        }
+        
+        setLoading(false);
+        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+        setError(errorMessage);
+        return createErrorResponse(errorMessage, 500);
+      }
+    },
+    [route, option, auth, app, getContext]
+  );
+  
+  /**
+   * Cancels the current mutation request
+   */
+  const cancel = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
+  return [	
+    mutate,
+    {
+      loading,
+      error,
+      data,
+      cancel,
+    }
+  ];
 };
 
 export default useMutation;

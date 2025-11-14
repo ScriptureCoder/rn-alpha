@@ -1,60 +1,149 @@
-import http from "../utils/service";
-import {useApp} from "store/contexts/app-context";
+import http, { Method } from "../utils/service";
+import { useApp } from "../store/contexts/app-context";
 import useDispatch from "./use-dispatch";
-import {actions} from "store/reducers/cache-reducer";
+import { actions } from "../store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import useCache from "./use-cache";
-import {Route} from "types";
+import { Route } from "../types";
+import { MutationResponse } from "./types";
+import {
+  extractErrorMessage,
+  isSuccessStatus,
+  isAuthError,
+  isAbortError,
+  createErrorResponse,
+  createSuccessResponse,
+} from "./utils/error-handler";
 
-type Props = (route:Route, variables?:any, authToken?:string)=>void
+/**
+ * Options for async query
+ */
+interface UseQueryAsyncOptions {
+  authToken?: string;
+  signal?: AbortSignal;
+}
 
-const useQueryAsync=():Props=> {
-    const {auth} = useApp();
-    const app = useApp();
-    const {getContext} = useCache();
+/**
+ * Hook return type - a function that performs async queries
+ */
+type UseQueryAsyncReturn = (
+  route: Route,
+  variables?: Record<string, any>,
+  options?: UseQueryAsyncOptions | string // string for backward compatibility (authToken)
+) => Promise<MutationResponse>;
 
-    const dispatch = useDispatch();
-    return async (route: Route, variables: any, authToken?:string) => {
-        const {key, method, path} = getContext(route, variables)
-        try {
-            dispatch(network.actions.set({
-                key,
-                value: {
-                    loading: true,
-                    error: undefined
-                }
-            }))
+/**
+ * Custom hook for async data fetching without subscriptions
+ * Useful for one-time data fetches that update the cache
+ * @returns An async function to fetch data
+ */
+const useQueryAsync = (): UseQueryAsyncReturn => {
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = useCache();
+  const dispatch = useDispatch();
 
-            const res: any = await http(path, method || "GET", variables||{}, true, authToken||auth.accessToken)
-            const error = res.status!==200?res.data?.data?.ResponseDescription || "Oops! an error occurred":undefined;
+  /**
+   * Performs an async query and updates cache and loading state
+   * @param route - The API route key
+   * @param variables - Query variables
+   * @param options - Optional auth token or options object with signal
+   * @returns Promise with response data or error
+   */
+  return async (
+    route: Route,
+    variables: Record<string, any> = {},
+    options?: UseQueryAsyncOptions | string
+  ): Promise<MutationResponse> => {
+    const { key, method, path } = getContext(route, variables);
+    
+    // Handle backward compatibility (authToken as string)
+    const opts: UseQueryAsyncOptions = 
+      typeof options === 'string' 
+        ? { authToken: options }
+        : options || {};
+    
+    try {
+      // Set loading state
+      dispatch(
+        network.actions.set({
+          key,
+          value: {
+            loading: true,
+            error: undefined,
+          },
+        })
+      );
 
-            dispatch(network.actions.set({
-                key: key,
-                value: {
-                    loading: false,
-                    error: error
-                }
-            }))
-
-            if (res.status === 200) {
-                dispatch(actions.set({key, value: res.data.data}))
-            } else if (res.status === 401) {
-                app.setTimeout().catch(() => {
-                })
-            }
-        } catch (e: any) {
-            const error = e.message || "Oops! an error occurred"
-            dispatch(network.actions.set({
-                key: key,
-                value: {
-                    loading: false,
-                    error: error
-                }
-            }))
+      // Perform the request
+      const res: any = await http(
+        path,
+        (method as Method) || "GET",
+        variables,
+        {
+          returnStatus: true,
+          auth: opts.authToken || auth.accessToken,
+          signal: opts.signal,
         }
-    };
+      );
+
+      const error = !isSuccessStatus(res.status)
+        ? extractErrorMessage(res)
+        : undefined;
+
+      // Update loading/error state
+      dispatch(
+        network.actions.set({
+          key,
+          value: {
+            loading: false,
+            error,
+          },
+        })
+      );
+
+      if (isSuccessStatus(res.status)) {
+        // Update cache with successful data
+        dispatch(actions.set({ key, value: res.data.data }));
+        return createSuccessResponse(res.data.data, res.status);
+      } else if (isAuthError(res.status)) {
+        // Handle auth errors
+        app.setTimeout().catch(() => {});
+        return createErrorResponse(error || "Unauthorized", res.status);
+      }
+      
+      return createErrorResponse(error || "Request failed", res.status);
+    } catch (e: any) {
+      // Handle abort errors differently - don't update state
+      if (isAbortError(e)) {
+        dispatch(
+          network.actions.set({
+            key,
+            value: {
+              loading: false,
+              error: undefined,
+            },
+          })
+        );
+        return createErrorResponse("Request cancelled", 0);
+      }
+      
+      const error = e.message || "Oops! an error occurred";
+      
+      // Update error state
+      dispatch(
+        network.actions.set({
+          key,
+          value: {
+            loading: false,
+            error,
+          },
+        })
+      );
+      
+      return createErrorResponse(error, 500);
+    }
+  };
 };
-
-
 
 export default useQueryAsync;

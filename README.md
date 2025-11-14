@@ -21,6 +21,7 @@ The package declares `react` and `react-native` as peer dependencies. Make sure 
 - `@react-native-community/netinfo`
 - `@react-navigation/native`
 - `@reduxjs/toolkit` and `react-redux`
+- `axios` - Modern HTTP client with request cancellation support
 - `country-code-emoji`
 - `dayjs`
 - `react-native-blob-util`, `react-native-crypto-js`, `react-native-mmkv`
@@ -30,13 +31,15 @@ The versions listed in `package.json` are **minimum compatible versions**. Any r
 
 ## Usage
 
+### Basic Example
+
 ```tsx
 import React from 'react';
 import { useQuery, formatMoney, AppProvider, store } from 'rn-alpha';
 import { Provider } from 'react-redux';
 
 const Example = () => {
-  const { data, loading, error } = useQuery('getCustomer');
+  const { data, loading, error, abort } = useQuery('getCustomer');
 
   return (
     <Provider store={store}>
@@ -50,13 +53,96 @@ const Example = () => {
 export default Example;
 ```
 
+### Request Cancellation
+
+```tsx
+import { useQuery } from 'rn-alpha';
+
+function SearchComponent({ query }) {
+  const { data, loading, abort } = useQuery('search', {
+    variables: { query },
+    networkPolicy: 'network-only'
+  });
+
+  // Cancel request when query changes or component unmounts
+  useEffect(() => {
+    return () => abort();
+  }, [query]);
+
+  return <Results data={data} loading={loading} />;
+}
+```
+
+### Mutations with Cancellation
+
+```tsx
+import { useMutation } from 'rn-alpha';
+
+function UploadComponent() {
+  const [uploadFile, { loading, cancel }] = useMutation('uploadFile');
+
+  const handleUpload = async (file) => {
+    const result = await uploadFile({ file });
+    
+    if ('error' in result) {
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  return (
+    <View>
+      <Button onPress={() => handleUpload(file)}>Upload</Button>
+      {loading && <Button onPress={cancel}>Cancel</Button>}
+    </View>
+  );
+}
+```
+
+For comprehensive examples including Content-Type switching, advanced patterns, and more, see [USAGE_EXAMPLES.md](./src/hooks/USAGE_EXAMPLES.md).
+
+## Features
+
+### Data Fetching & Mutations
+
+- **`useQuery`** - Data fetching with caching, network policies, and automatic request cancellation
+- **`useQueryAsync`** - Async data fetching without subscriptions
+- **`useMutation`** - POST/PUT/DELETE operations with loading states and cancellation
+- **`useMutationAsync`** - Async mutations with legacy route support
+
+### HTTP Service
+
+Built on Axios with modern features:
+
+- ✅ **Multiple Content-Types** - JSON (default), URL-encoded, multipart form data
+- ✅ **Request Cancellation** - AbortController support to prevent race conditions
+- ✅ **Automatic Retry Logic** - Built-in retry helpers with exponential backoff
+- ✅ **Better Error Handling** - Distinguish between network errors, HTTP errors, and cancellations
+- ✅ **Type Safety** - Full TypeScript support with proper type inference
+
+### Helper Utilities
+
+- **HTTP Helpers** - `createAbortController`, `isAbortError`, `shouldRetry`, `formatFormData`, `combineAbortSignals`
+- **Error Handlers** - `extractErrorMessage`, `isSuccessStatus`, `isAuthError`, `createErrorResponse`
+- **Other Utilities** - `formatMoney`, `encrypt`, `decrypt`, `storage`
+
+### Store & Context
+
+- **Redux Store** - Pre-configured store with cache and app reducers
+- **Context Providers** - `AppProvider` for global app state
+- **Typed Hooks** - `useDispatch`, `useSelector` with full TypeScript support
+
+## Package Exports
+
 The package exports:
 
-- **Hooks** (`useQuery`, `useQueryAsync`, `useMutation`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`)
-- **Utility helpers** (`formatMoney`, `encrypt`, `decrypt`, `storage`)
-- **Context providers and Redux store** (`AppProvider`, `store`, `AppDispatch`, `RootState`)
-- **API paths** (`PATHS` - predefined API route definitions)
-- **Date utilities** (`dayjs` with timezone and relative time plugins)
+- **Hooks** - `useQuery`, `useQueryAsync`, `useMutation`, `useMutationAsync`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`
+- **HTTP Utilities** - `createAbortController`, `isAbortError`, `shouldRetry`, `formatFormData`, `formatUrlEncoded`, `combineAbortSignals`, `createTimeoutController`
+- **Error Handlers** - `extractErrorMessage`, `isSuccessStatus`, `isAuthError`, `createErrorResponse`, `createSuccessResponse`
+- **Types** - All hook options, results, and response types
+- **Store** - `AppProvider`, `store`, `AppDispatch`, `RootState`
+- **Utilities** - `formatMoney`, `encrypt`, `decrypt`, `storage`
+- **API Paths** - `PATHS` - predefined API route definitions
+- **Date Utilities** - `dayjs` with timezone and relative time plugins
 
 See `src/index.ts` for the full export surface.
 
