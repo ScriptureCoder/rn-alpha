@@ -24,7 +24,8 @@
     "clean": "rimraf dist",
     "lint": "eslint .",
     "test": "jest",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "pub": "npm run build && npm pack && npm publish --access public"
   },
   "dependencies": {
     "@react-native-community/netinfo": "^11.4.1",

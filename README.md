@@ -22,7 +22,6 @@
   - [useMutation](#usemutation)
   - [useMutationAsync](#usemutationasync)
   - [useCache](#usecache)
-  - [useUpload](#useupload)
 - [Store & State Management](#store--state-management)
   - [Core State](#core-state)
   - [Adding Custom Reducers](#adding-custom-reducers)
@@ -757,44 +756,6 @@ function CacheManager() {
 - `deleteItem(key, id)` - Delete array item
 - `prepend(key, item)` - Add to array start
 - `append(key, item)` - Add to array end
-
----
-
-### useUpload
-
-File upload with progress tracking.
-
-#### Basic Usage
-
-```typescript
-import { useUpload } from '@scripturecoder/rn-alpha-hooks';
-
-function FileUploader() {
-  const { upload, progress, loading, error } = useUpload();
-
-  const handleUpload = async (file) => {
-    const result = await upload('uploadFile', {
-      file: {
-        uri: file.uri,
-        type: file.type,
-        name: file.name,
-      }
-    });
-
-    if ('data' in result) {
-      Alert.alert('Success', 'File uploaded!');
-    }
-  };
-
-  return (
-    <View>
-      <Button onPress={() => handleUpload(selectedFile)}>Upload</Button>
-      {loading && <ProgressBar value={progress} />}
-      {error && <ErrorText>{error}</ErrorText>}
-    </View>
-  );
-}
-```
 
 ---
 
@@ -1759,17 +1720,17 @@ function UserManagement() {
 }
 ```
 
-### File Upload with Progress
+### File Upload
 
 ```typescript
 function FileUploader() {
-  const { upload, progress, loading } = useUpload();
+  const [uploadFile, { loading }] = useMutation('uploadFile');
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleUpload = async () => {
     if (!selectedFile) return;
 
-    const result = await upload('uploadFile', {
+    const result = await uploadFile({
       file: {
         uri: selectedFile.uri,
         type: selectedFile.type,
@@ -1792,12 +1753,7 @@ function FileUploader() {
       <Button onPress={handleUpload} disabled={!selectedFile || loading}>
         Upload
       </Button>
-      {loading && (
-        <>
-          <ProgressBar value={progress} />
-          <Text>{Math.round(progress * 100)}%</Text>
-        </>
-      )}
+      {loading && <Spinner />}
     </View>
   );
 }
@@ -1849,7 +1805,6 @@ function CreatePost() {
 | `useMutation` | POST/PUT/DELETE operations | `[mutateFunction, { loading, error, data }]` |
 | `useMutationAsync` | Imperative mutations | `[mutateFunction, { loading, error }]` |
 | `useCache` | Cache manipulation | `{ get, set, update, del, invalidate, ... }` |
-| `useUpload` | File uploads | `{ upload, progress, loading }` |
 | `useApp` | Core app state | `{ auth, user, connected, setAuth, ... }` |
 | `useDispatch` | Redux dispatch | `dispatch` |
 | `useSelector` | Redux selector | `selectedValue` |
