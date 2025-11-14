@@ -32,11 +32,10 @@ The versions listed in `package.json` are **minimum compatible versions**. Any r
 
 ```tsx
 import React from 'react';
-import { useQuery, useColor, formatMoney, AppProvider, store } from 'rn-alpha';
+import { useQuery, formatMoney, AppProvider, store } from 'rn-alpha';
 import { Provider } from 'react-redux';
 
 const Example = () => {
-  const { colors } = useColor();
   const { data, loading, error } = useQuery('getCustomer');
 
   return (
@@ -53,10 +52,9 @@ export default Example;
 
 The package exports:
 
-- **Hooks** (`useQuery`, `useQueryAsync`, `useMutation`, `useColor`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`)
+- **Hooks** (`useQuery`, `useQueryAsync`, `useMutation`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`)
 - **Utility helpers** (`formatMoney`, `encrypt`, `decrypt`, `storage`)
 - **Context providers and Redux store** (`AppProvider`, `store`, `AppDispatch`, `RootState`)
-- **Theme constants** (`Colors`, `colorScheme`, `ColorsProps`, `ColorProps`, `width`, `height`, `ios`, `android`, and more)
 - **API paths** (`PATHS` - predefined API route definitions)
 - **Date utilities** (`dayjs` with timezone and relative time plugins)
 
@@ -95,7 +93,6 @@ src/
   index.ts                # Public export surface
   hooks/                  # Custom React hooks (useQuery, useMutation, etc.)
   store/                  # Redux store, reducers, and contexts
-  constants/              # Theme constants (colors, layout, elevation)
   utils/                  # Utility functions (money, crypto, storage, etc.)
   config.ts              # Configuration
   paths.ts                # API route definitions

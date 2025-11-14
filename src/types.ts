@@ -21,8 +21,6 @@ export type DashboardStackList = {
   dashboard:undefined
 }
 
-export type ColorModes = 'light'|'dark'
-
 export type Weight = 'Regular'|'Bold'|'SemiBold'|'Light'|'Medium'|'ExtraLight'|'Italic'|'ExtraBold';
 
 export type Route = keyof typeof PATHS

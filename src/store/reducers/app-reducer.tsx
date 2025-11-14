@@ -1,4 +1,4 @@
-import {ColorModes, Visibility} from 'types';
+import {Visibility} from 'types';
 import {PayloadAction, createSlice} from '@reduxjs/toolkit';
 
 import uuid from 'react-native-uuid';
@@ -9,8 +9,6 @@ export interface AppState {
     customerId: string;
     user: any;
   };
-  colorMode: ColorModes;
-  systemColor: boolean;
   registered: boolean;
   deviceId: any;
   email: string;
@@ -31,8 +29,6 @@ const initialState: AppState = {
     customerId: '',
     user: {},
   },
-  colorMode: 'light',
-  systemColor: false,
   registered: false,
   deviceId: uuid.v4(),
   email: '',
@@ -73,14 +69,8 @@ const appSlice = createSlice({
     setImage(state, action: PayloadAction<string>) {
       state.image = action.payload;
     },
-    setColorMode(state, action: PayloadAction<any>) {
-      state.colorMode = action.payload;
-    },
     setRegistered(state, action: PayloadAction<boolean>) {
       state.registered = action.payload;
-    },
-    setSystemColor(state, action: PayloadAction<boolean>) {
-      state.systemColor = action.payload;
     },
     setDefaultPassword(state, action: PayloadAction<boolean>) {
       state.defaultPassword = action.payload;

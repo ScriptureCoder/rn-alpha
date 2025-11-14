@@ -13,7 +13,6 @@ import NetInfo from '@react-native-community/netinfo';
 import SocketContext from './socket-context';
 import Toast from '../../utils/toast';
 import {Visibility} from 'types';
-import {useColorScheme} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import useSelector from "hooks/use-selector";
 import useDispatch from "hooks/use-dispatch";
@@ -26,8 +25,6 @@ interface Props extends AppState {
   setAuth: (payload: any) => void;
   setLogout: () => Promise<void>;
   setTimeout: () => Promise<void>;
-  setColorMode: (payload: string) => void;
-  setSystemColor: (systemColor: boolean) => void;
   setDefaultPassword: (value: boolean) => void;
   setBiometric: (value: boolean) => void;
   toggleVisibility: (value: Visibility) => void;
@@ -58,8 +55,6 @@ const AppProvider: React.FC<any> = ({children}) => {
     };
   }, []);
 
-  const isDarkMode = useColorScheme() === 'dark';
-
   const func = useMemo(
     () => ({
       setAuth: (payload: any) => {
@@ -76,14 +71,6 @@ const AppProvider: React.FC<any> = ({children}) => {
       },
       setRegistered: (payload: boolean) => {
         dispatch(actions.setRegistered(payload));
-      },
-      setColorMode: (payload: any) => {
-        dispatch(actions.setSystemColor(false));
-        dispatch(actions.setColorMode(payload));
-      },
-      setSystemColor: (payload: any) => {
-        dispatch(actions.setColorMode(isDarkMode ? 'dark' : 'light'));
-        dispatch(actions.setSystemColor(payload));
       },
       setDefaultPassword: (payload: boolean) => {
         dispatch(actions.setDefaultPassword(payload));
@@ -110,7 +97,7 @@ const AppProvider: React.FC<any> = ({children}) => {
         });
       },
     }),
-    [dispatch, isDarkMode, reset],
+    [dispatch, reset],
   );
 
   const value = useMemo(
