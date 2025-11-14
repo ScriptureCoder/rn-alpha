@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import http, { Method } from "../utils/service";
-import { useApp } from "../store/contexts/app-context";
+import { useApp } from "store/contexts/app-context";
 import { Keyboard } from "react-native";
-import { Route } from "../types";
+import { Route } from "types";
 import useCache from "./use-cache";
 import { MutationOptions, MutationResult, MutationResponse } from "./types";
 import {
@@ -12,7 +12,7 @@ import {
   isAbortError,
   createErrorResponse,
   createSuccessResponse,
-} from "./utils/error-handler";
+} from "hooks/utils";
 import { ERROR_MESSAGES } from "./constants";
 
 /**
@@ -32,10 +32,10 @@ const useMutation = <T = any,>(
   const app = useApp();
   const { auth } = app;
   const { getContext } = useCache();
-  
+
   // Store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -59,15 +59,15 @@ const useMutation = <T = any,>(
         }
 
         const { path, method, rawPath } = getContext(route, variables);
-        
+
         // Abort any existing request
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
-        
+
         // Create new abort controller
         abortControllerRef.current = new AbortController();
-        
+
         setLoading(true);
         setError(undefined);
 
@@ -108,7 +108,7 @@ const useMutation = <T = any,>(
           setLoading(false);
           return createErrorResponse("Request cancelled", 0);
         }
-        
+
         setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
         setError(errorMessage);
@@ -117,7 +117,7 @@ const useMutation = <T = any,>(
     },
     [route, option, auth, app, getContext]
   );
-  
+
   /**
    * Cancels the current mutation request
    */
@@ -128,7 +128,7 @@ const useMutation = <T = any,>(
     }
   }, []);
 
-  return [	
+  return [
     mutate,
     {
       loading,
