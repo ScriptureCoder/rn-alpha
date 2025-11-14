@@ -8,7 +8,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import {useDispatch, useSelector} from 'rn-alpha';
 
 import NetInfo from '@react-native-community/netinfo';
 import SocketContext from './socket-context';
@@ -16,6 +15,8 @@ import Toast from '../../utils/toast';
 import {Visibility} from 'types';
 import {useColorScheme} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import useSelector from "hooks/use-selector";
+import useDispatch from "hooks/use-dispatch";
 
 interface Props extends AppState {
   setEmail: (payload: string) => void;

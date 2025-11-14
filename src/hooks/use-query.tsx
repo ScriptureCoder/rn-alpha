@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from "react";
 import http from "../utils/service";
 import {useApp} from "store/contexts/app-context";
-import {useDispatch, useSelector} from "rn-alpha";
+import useDispatch from "./use-dispatch";
+import useSelector from "./use-selector";
 import {actions} from "store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import {store} from "store";

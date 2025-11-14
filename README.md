@@ -1,6 +1,6 @@
 # rn-alpha
 
-`rn-alpha` is a React Native component, hook, and utility toolkit extracted from the Alpha mobile experience. It packages the reusable building blocks (layout primitives, form elements, theming utilities, store helpers, and service hooks) into an installable npm package.
+`rn-alpha` is a React Native hooks, store, and utility toolkit extracted from the Alpha mobile experience. It packages reusable hooks, Redux store configuration, and utility functions into an installable npm package.
 
 ## Installation
 
@@ -16,53 +16,49 @@ The package declares `react` and `react-native` as peer dependencies. Make sure 
 
 ### Runtime dependencies
 
-`rn-alpha` ships only the primitives required by the component set. Your app must also install these packages (if they are not already present):
+`rn-alpha` requires these packages to be installed in your app (if they are not already present):
 
-- `@d11/react-native-fast-image`
-- `@gorhom/bottom-sheet`
 - `@react-native-community/netinfo`
+- `@react-navigation/native`
 - `@reduxjs/toolkit` and `react-redux`
 - `country-code-emoji`
-- `dayjs`, `formik`, and `yup`
-- `moti`
+- `dayjs`
 - `react-native-blob-util`, `react-native-crypto-js`, `react-native-mmkv`
-- `react-native-date-picker`, `react-native-indicators`, `react-native-linear-gradient`, `react-native-material-menu`, `react-native-otp-entry`, `react-native-safe-area-context`, `react-native-simple-toast`, `react-native-svg`, `react-native-uuid`
+- `react-native-simple-toast`, `react-native-uuid`
 
-The versions listed in `package.json` are **minimum compatible versions**. Any release that satisfies the published semver range (for example `^5.1.6` for `@gorhom/bottom-sheet`) will work, so you can align with the versions already in your app as long as they remain API-compatible.
+The versions listed in `package.json` are **minimum compatible versions**. Any release that satisfies the published semver range will work, so you can align with the versions already in your app as long as they remain API-compatible.
 
 ## Usage
 
 ```tsx
 import React from 'react';
-import { Button, Page, useColor, formatMoney } from 'rn-alpha';
+import { useQuery, useColor, formatMoney, AppProvider, store } from 'rn-alpha';
+import { Provider } from 'react-redux';
 
 const Example = () => {
   const { colors } = useColor();
+  const { data, loading, error } = useQuery('getCustomer');
 
   return (
-    <Page color="background">
-      <Button
-        title={`Balance • ${formatMoney(125000, 2)}`}
-        color="primary"
-        textColor="light"
-        onPress={() => {}}
-        mt={32}
-      />
-    </Page>
+    <Provider store={store}>
+      <AppProvider>
+        {/* Your app content */}
+      </AppProvider>
+    </Provider>
   );
 };
 
 export default Example;
 ```
 
-Beyond the layout primitives, the package exports:
+The package exports:
 
-- Custom form controls (`Input`, `Password`, `Select`, `DateSelect`, etc.)
-- Modal and sheet helpers (`Modal`, `Sheet`, `AlertModal`, `PageModal`)
-- Hooks (`useColor`, `useQuery`, `useMutation`, `useDispatch`, `useSelector`, `useApp`)
-- Utility helpers (`formatMoney`, `encrypt`, `decrypt`, `storage`)
-- Context providers and Redux store wiring (`AppProvider`, `store`)
-- Theme constants (`Colors`, `colorScheme`, `width`, `height`, and more)
+- **Hooks** (`useQuery`, `useQueryAsync`, `useMutation`, `useColor`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`)
+- **Utility helpers** (`formatMoney`, `encrypt`, `decrypt`, `storage`)
+- **Context providers and Redux store** (`AppProvider`, `store`, `AppDispatch`, `RootState`)
+- **Theme constants** (`Colors`, `colorScheme`, `ColorsProps`, `ColorProps`, `width`, `height`, `ios`, `android`, and more)
+- **API paths** (`PATHS` - predefined API route definitions)
+- **Date utilities** (`dayjs` with timezone and relative time plugins)
 
 See `src/index.ts` for the full export surface.
 
@@ -75,7 +71,7 @@ The project is configured to emit CommonJS, ESM, and type declaration bundles vi
 npm run clean && npm run build
 ```
 
-This generates `dist/index.js`, `dist/index.mjs`, and `dist/index.d.ts`. The `files` field in `package.json` ensures only the compiled artifacts (and supporting source/assets) are published.
+This generates `dist/index.js`, `dist/index.mjs`, and `dist/index.d.ts`. The `files` field in `package.json` ensures only the compiled artifacts (and supporting source) are published.
 
 A full type check can be executed independently:
 
@@ -97,18 +93,20 @@ npx tsc --noEmit
 ```
 src/
   index.ts                # Public export surface
-  rn-alpha/               # Core components and hooks
-  components/             # Cross-cutting primitives (page, safe-area, icon button, progress bar)
-  constants/, utils/      # Theming and helper utilities
-  store/                  # Redux store and contexts
-  assets/                 # SVG icon definitions and static assets
+  hooks/                  # Custom React hooks (useQuery, useMutation, etc.)
+  store/                  # Redux store, reducers, and contexts
+  constants/              # Theme constants (colors, layout, elevation)
+  utils/                  # Utility functions (money, crypto, storage, etc.)
+  config.ts              # Configuration
+  paths.ts                # API route definitions
+  types.ts                # TypeScript type definitions
 ```
 
 ## Contributing & development
 
 - Run `npx tsc --noEmit` to type-check edits.
 - Add or adjust tests inside `__tests__/` and execute with `npm test`.
-- Keep new code documented and favor token-based colors (`ColorProps`) to stay compatible with the theme system.
+- Keep new code documented and maintain type safety throughout.
 
 ## License
 

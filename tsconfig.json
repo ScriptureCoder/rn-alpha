@@ -18,8 +18,6 @@
     "allowImportingTsExtensions": true,
     "baseUrl": "./src",
     "paths": {
-      "rn-alpha": ["./rn-alpha/index"],
-      "rn-alpha/*": ["./rn-alpha/*"],
       "assets/*": ["./assets/*"],
       "constants/*": ["./constants/*"],
       "hooks/*": ["./hooks/*"],
@@ -34,7 +32,6 @@
   },
   "include": [
     "src/index.ts",
-    "src/rn-alpha/**/*",
     "src/hooks/**/*",
     "src/store/**/*",
     "src/constants/**/*",

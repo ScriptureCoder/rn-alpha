@@ -1,6 +1,6 @@
 import http from "../utils/service";
 import {useApp} from "store/contexts/app-context";
-import {useDispatch} from "rn-alpha";
+import useDispatch from "./use-dispatch";
 import {actions} from "store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import useCache from "./use-cache";

@@ -1,4 +1,5 @@
-import {useApp, useDispatch} from "rn-alpha";
+import {useApp} from "../store/contexts/app-context";
+import useDispatch from "./use-dispatch";
 import {actions} from "../store/reducers/cache-reducer";
 import {store} from "../store";
 import {Method} from "../utils/service";
