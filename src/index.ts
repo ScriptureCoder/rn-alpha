@@ -117,14 +117,23 @@ export {
   useRefetchInterval,
 } from './hooks/utils/refetch-manager';
 
+// Configuration Provider (NEW - Recommended)
+export { AlphaProvider } from './store/contexts/alpha-provider';
+export type { AlphaConfig } from './config';
+export { DEFAULT_CONFIG } from './config';
+export { useAlphaConfig } from './store/contexts/config-context';
+
 // Store exports
 export { default as AppProvider } from './store/contexts/app-context';
 export { store } from './store';
 export type { AppDispatch, RootState } from './store';
 
-export { config as alphaConfig} from './config';
+export { config as alphaConfig, naira } from './config';
 export { default as PATHS } from './paths';
 export * from './types';
+
+// HTTP Config (Advanced use)
+export { setHttpConfig, getHttpConfig } from './utils/service';
 
 export { default as formatMoney } from './utils/money';
 export * from './utils/crypto';

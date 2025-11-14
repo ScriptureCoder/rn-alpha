@@ -73,6 +73,22 @@ import { useEffect as useEffect3, useMemo as useMemo2, useRef as useRef2, useCal
 import axios from "axios";
 
 // src/config.ts
+var DEFAULT_CONFIG = {
+  baseUrl: "",
+  timeout: 3e4,
+  cache: {
+    ttl: 5 * 60 * 1e3,
+    staleTime: 0,
+    maxSize: 100
+  },
+  defaultNetworkPolicy: "cache-first",
+  retry: {
+    enabled: true,
+    count: 3,
+    delay: "exponential"
+  },
+  debug: false
+};
 var naira = "\u20A6";
 var config = {
   naira,
@@ -81,13 +97,21 @@ var config = {
 var config_default = config;
 
 // src/utils/service.ts
+var currentConfig = DEFAULT_CONFIG;
+function setHttpConfig(newConfig) {
+  currentConfig = newConfig;
+  axiosInstance = createAxiosInstance();
+}
+function getHttpConfig() {
+  return currentConfig;
+}
 var createAxiosInstance = () => {
   const instance = axios.create({
-    baseURL: config_default.baseUrl,
-    timeout: 3e4,
-    // 30 seconds default
+    baseURL: currentConfig.baseUrl || config_default.baseUrl,
+    timeout: currentConfig.timeout || 3e4,
     headers: {
-      Accept: "application/json"
+      Accept: "application/json",
+      ...currentConfig.headers || {}
     }
   });
   instance.interceptors.response.use(
@@ -544,62 +568,18 @@ var PATHS = {
   generateOtp: "POST:/GenerateOTP",
   validateOtp: "POST:/ValidateOTP",
   register: "POST:/CreateNewAccount",
-  forgot: "POST:/ForgotPassword",
-  getAccounts: "GET:/GetAccounts/:customerId",
-  getTransferAccounts: "GET:/GetTransferAccounts/:customerId",
-  getCustomer: "GET:/GetCustomer/:customerId",
-  getBvnDetails: "POST:/GetBVNDetails",
-  validateOTPBVN: "POST:/ValidateOTPBVN",
-  registerDevice: "POST:/RegisterDeviceUUID/:customerId",
-  accountStatement: "POST:/GetAccountStatement/:customerId/:accountNumber",
-  loanHistory: "POST:/GetLoanHistory/:customerId",
-  customerSummary: "GET:/GetCustomerSummary/:customerId",
-  accountHistory: "POST:/GetAccountHistory/:customerId/:accountNumber",
-  downloadStatement: "POST:/DownloadAccountStatement/:customerId/:accountNumber",
-  changePassword: "POST:/ChangePassword/:customerId",
-  changePin: "POST:/SaveSecurityPin/:customerId",
-  deleteBeneficiary: "POST:/DeleteBeneficiary/:customerId",
-  addBeneficiary: "POST:/AddBeneficiary/:customerId",
-  getBeneficiaries: "GET:/GetBeneficiary/:customerId",
-  confirmBeneficiary: "POST:/ConfirmBeneficiary/:customerId",
-  getBanks: "POST:/GetBanks",
-  transferHistory: "POST:/GetRecentTransfer/:customerId",
-  transferBeneficiary: "POST:/TransferFunds/:customerId",
-  transfer: "POST:/TransferFundsMixed/:customerId",
-  airtime: "POST:/PayAirtimeBills/:customerId",
-  bill: "POST:/PayBills/:customerId",
-  billHistory: "POST:/GetBillHistory/:customerId",
-  billerCategories: "GET:/GetBillerCategory/:customerId",
-  billers: "POST:/GetBillers/:customerId",
-  billerProduct: "POST:/GetProducts/:customerId",
-  validateBillCustomer: "POST:/ValidateBillCustomer/:customerId",
-  getDeposit: "GET:/GetDeposits/:customerId",
-  getSavings: "GET:/GetSavings/:customerId",
-  createSavings: "POST:/AddNewTargetSavings/:customerId",
-  getLoans: "GET:/GetLoans/:customerId",
-  liqudateDeposit: "POST:/LiqudateDeposit/:customerId",
-  getInvestmentRate: "POST:/GetInvestmentRate/:customerId",
-  createDeposit: "POST:/BookDeposits/:customerId",
-  getCards: "POST:/GetCards/:customerId",
-  fundWallet: "POST:/FundSavings/:customerId",
-  requestLoan: "POST:/LoanRequest/:customerId",
-  calculateLTV: "GET:/CalculateLTV/:customerId",
-  updateSavings: "POST:/UpdateSavings/:customerId",
-  closeSavings: "POST:/CloseSavings/:customerId",
-  savings: "GET:/savings/:itemId",
-  savingsWithdrawal: "POST:/WithdrawSavings/:customerId",
-  registerToken: "POST:/AddFirebaseDetails/:customerId",
-  feedback: "POST:/SendFeedback/:customerId",
-  blockCard: "POST:/BlockCard/:customerId",
-  requestCard: "POST:/RequestCard/:customerId",
-  verifyNin: "POST:/VerifyNIN/:customerId",
-  updateLocationId: "POST:/updateLocationId/:customerId"
+  forgot: "POST:/ForgotPassword"
 };
 var paths_default = PATHS;
 
 // src/hooks/utils/route-parser.ts
 function parseRoute(route, variables = {}, customerId) {
-  const rawPath = paths_default[route] || route;
+  const config2 = getHttpConfig();
+  const allPaths = {
+    ...paths_default,
+    ...config2.paths || {}
+  };
+  const rawPath = allPaths[route] || route;
   const [method, pathTemplate] = rawPath.split(":/");
   const variablesCopy = { ...variables };
   const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
@@ -1871,6 +1851,9 @@ function useRefetchInterval(enabled, refetch, interval) {
   }, [enabled, refetch, interval]);
 }
 
+// src/store/contexts/alpha-provider.tsx
+import { Provider } from "react-redux";
+
 // src/store/index.ts
 init_storage();
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
@@ -1908,6 +1891,61 @@ store.subscribe(() => {
   saveToLocalStorage(store.getState());
 });
 
+// src/store/contexts/config-context.tsx
+import { createContext as createContext3, useContext as useContext3, useMemo as useMemo3, useEffect as useEffect7 } from "react";
+import { jsx as jsx3 } from "react/jsx-runtime";
+var ConfigContext = createContext3(void 0);
+var ConfigProvider = ({ config: config2, children }) => {
+  var _a;
+  const mergedConfig = useMemo3(
+    () => ({
+      ...DEFAULT_CONFIG,
+      ...config2,
+      cache: {
+        ...DEFAULT_CONFIG.cache,
+        ...config2.cache
+      },
+      retry: {
+        ...DEFAULT_CONFIG.retry,
+        ...config2.retry
+      }
+    }),
+    [config2]
+  );
+  useEffect7(() => {
+    var _a2;
+    if ((_a2 = mergedConfig.cache) == null ? void 0 : _a2.maxSize) {
+      setMaxCacheSize(mergedConfig.cache.maxSize);
+    }
+  }, [(_a = mergedConfig.cache) == null ? void 0 : _a.maxSize]);
+  useEffect7(() => {
+    if (mergedConfig.debug) {
+      enableGlobalDebug();
+    } else {
+      disableGlobalDebug();
+    }
+  }, [mergedConfig.debug]);
+  useEffect7(() => {
+    setHttpConfig(mergedConfig);
+  }, [mergedConfig]);
+  const value = useMemo3(() => ({ config: mergedConfig }), [mergedConfig]);
+  return /* @__PURE__ */ jsx3(ConfigContext.Provider, { value, children });
+};
+function useAlphaConfig() {
+  const context = useContext3(ConfigContext);
+  if (!context) {
+    return DEFAULT_CONFIG;
+  }
+  return context.config;
+}
+var config_context_default = ConfigProvider;
+
+// src/store/contexts/alpha-provider.tsx
+import { jsx as jsx4 } from "react/jsx-runtime";
+var AlphaProvider = ({ children, config: config2 }) => {
+  return /* @__PURE__ */ jsx4(Provider, { store, children: /* @__PURE__ */ jsx4(config_context_default, { config: config2, children: /* @__PURE__ */ jsx4(app_context_default, { children }) }) });
+};
+
 // src/utils/money.ts
 function money(num, decimal) {
   if (num || num === 0) {
@@ -1935,8 +1973,10 @@ dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 export {
+  AlphaProvider,
   app_context_default as AppProvider,
   DEFAULT_CACHE_TTL,
+  DEFAULT_CONFIG,
   DEFAULT_STALE_TIME,
   ERROR_MESSAGES,
   MAX_CACHE_SIZE,
@@ -1968,6 +2008,7 @@ export {
   getCacheAge,
   getCacheData,
   getCacheMetadata,
+  getHttpConfig,
   getInFlightCount,
   getOfflineQueue,
   getOrCreateRequest,
@@ -1981,13 +2022,16 @@ export {
   isAbortError as isHttpAbortError,
   isRequestInFlight,
   isSuccessStatus,
+  naira,
   retryWithBackoff,
   retryWithJitter,
   safeAbort,
+  setHttpConfig,
   setMaxCacheSize,
   shouldRetry2 as shouldRetry,
   storage_default as storage,
   store,
+  useAlphaConfig,
   useApp,
   use_cache_default as useCache,
   use_dispatch_default as useDispatch,

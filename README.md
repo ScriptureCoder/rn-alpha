@@ -100,6 +100,67 @@ function UploadComponent() {
 
 For comprehensive examples including Content-Type switching, advanced patterns, and more, see [USAGE_EXAMPLES.md](./src/hooks/USAGE_EXAMPLES.md).
 
+## Setup
+
+Wrap your app with `AlphaProvider` and provide configuration:
+
+```typescript
+import { AlphaProvider } from '@scripturecoder/rn-alpha';
+
+export default function App() {
+  return (
+    <AlphaProvider
+      config={{
+        baseUrl: 'https://api.example.com',
+        paths: {
+          login: 'POST:/auth/login',
+          users: 'GET:/users',
+          getUser: 'GET:/users/:id',
+        },
+        cache: {
+          ttl: 10 * 60 * 1000, // 10 minutes
+        },
+        debug: __DEV__,
+      }}
+    >
+      {/* Your app */}
+    </AlphaProvider>
+  );
+}
+```
+
+For detailed configuration options, see [CONFIGURATION.md](./CONFIGURATION.md).
+
+## Custom Hook Wrappers
+
+You can easily wrap the base hooks to add your own business logic like encryption, logging, or analytics.
+
+**Example: Encrypted Hooks**
+
+```typescript
+// src/hooks/useAppQuery.ts
+import { useQuery, encrypt, decrypt } from '@scripturecoder/rn-alpha';
+
+export function useAppQuery(route, options) {
+  const { variables, ...rest } = options || {};
+  
+  // Encrypt sensitive fields before sending
+  const encryptedVars = encryptSensitiveFields(variables);
+  
+  const result = useQuery(route, { ...rest, variables: encryptedVars });
+  
+  // Decrypt sensitive fields in response
+  return {
+    ...result,
+    data: decryptSensitiveFields(result.data),
+  };
+}
+```
+
+See complete examples in the [`examples/`](./examples/) directory:
+- **`encrypted-hooks.tsx`** - Full encryption/decryption wrapper with multiple patterns
+- **`app-hooks-template.tsx`** - Ready-to-use template for your app
+
 ## Features
 
 ### 🚀 Data Fetching & Mutations

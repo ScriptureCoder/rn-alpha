@@ -1,6 +1,7 @@
 import { Route } from "../../types";
 import { Method } from "../../utils/service";
 import PATHS from "../../paths";
+import { getHttpConfig } from "../../utils/service";
 
 export interface ParsedRoute {
   path: string;
@@ -21,7 +22,15 @@ export function parseRoute(
   variables: Record<string, any> = {},
   customerId?: string
 ): ParsedRoute {
-  const rawPath = PATHS[route] || route;
+  const config = getHttpConfig();
+  
+  // Merge default PATHS with custom paths (custom takes precedence)
+  const allPaths = { 
+    ...PATHS, 
+    ...(config.paths || {}) 
+  };
+  
+  const rawPath = allPaths[route] || route;
   const [method, pathTemplate] = rawPath.split(":/");
   
   // Clone variables to avoid mutation

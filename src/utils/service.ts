@@ -1,8 +1,12 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import config from 'config';
+import { AlphaConfig, DEFAULT_CONFIG } from '../config';
 
 export type Method = 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH';
 export type ContentType = 'json' | 'urlencoded' | 'multipart';
+
+// Current configuration
+let currentConfig: AlphaConfig = DEFAULT_CONFIG;
 
 export interface HttpOptions {
   auth?: string;
@@ -23,14 +27,33 @@ export interface HttpResponse<T = any> {
 }
 
 /**
+ * Internal: Set current config (called by ConfigProvider)
+ * @param config - Alpha configuration
+ */
+export function setHttpConfig(newConfig: AlphaConfig): void {
+  currentConfig = newConfig;
+  // Recreate axios instance with new config
+  axiosInstance = createAxiosInstance();
+}
+
+/**
+ * Get current HTTP config
+ * @returns Current Alpha configuration
+ */
+export function getHttpConfig(): AlphaConfig {
+  return currentConfig;
+}
+
+/**
  * Creates and configures an Axios instance with base configuration
  */
 const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: config.baseUrl,
-    timeout: 30000, // 30 seconds default
+    baseURL: currentConfig.baseUrl || config.baseUrl,
+    timeout: currentConfig.timeout || 30000,
     headers: {
       Accept: 'application/json',
+      ...(currentConfig.headers || {}),
     },
   });
 
@@ -62,7 +85,7 @@ const createAxiosInstance = (): AxiosInstance => {
 };
 
 // Singleton axios instance
-const axiosInstance = createAxiosInstance();
+let axiosInstance = createAxiosInstance();
 
 /**
  * Converts object to URL-encoded string

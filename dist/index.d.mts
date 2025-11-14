@@ -3,7 +3,7 @@ import * as redux_thunk from 'redux-thunk';
 import * as redux from 'redux';
 import { TypedUseSelectorHook } from 'react-redux';
 import * as _reduxjs_toolkit from '@reduxjs/toolkit';
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 declare const PATHS: {
     login: string;
@@ -12,55 +12,6 @@ declare const PATHS: {
     validateOtp: string;
     register: string;
     forgot: string;
-    getAccounts: string;
-    getTransferAccounts: string;
-    getCustomer: string;
-    getBvnDetails: string;
-    validateOTPBVN: string;
-    registerDevice: string;
-    accountStatement: string;
-    loanHistory: string;
-    customerSummary: string;
-    accountHistory: string;
-    downloadStatement: string;
-    changePassword: string;
-    changePin: string;
-    deleteBeneficiary: string;
-    addBeneficiary: string;
-    getBeneficiaries: string;
-    confirmBeneficiary: string;
-    getBanks: string;
-    transferHistory: string;
-    transferBeneficiary: string;
-    transfer: string;
-    airtime: string;
-    bill: string;
-    billHistory: string;
-    billerCategories: string;
-    billers: string;
-    billerProduct: string;
-    validateBillCustomer: string;
-    getDeposit: string;
-    getSavings: string;
-    createSavings: string;
-    getLoans: string;
-    liqudateDeposit: string;
-    getInvestmentRate: string;
-    createDeposit: string;
-    getCards: string;
-    fundWallet: string;
-    requestLoan: string;
-    calculateLTV: string;
-    updateSavings: string;
-    closeSavings: string;
-    savings: string;
-    savingsWithdrawal: string;
-    registerToken: string;
-    feedback: string;
-    blockCard: string;
-    requestCard: string;
-    verifyNin: string;
-    updateLocationId: string;
 };
 
 type RootStackParamList = {
@@ -375,6 +326,31 @@ interface Props extends AppState {
 declare const useApp: () => Props;
 declare const AppProvider: React.FC<any>;
 
+interface AlphaConfig {
+    baseUrl: string;
+    timeout?: number;
+    headers?: Record<string, string>;
+    paths?: Record<string, string>;
+    cache?: {
+        ttl?: number;
+        staleTime?: number;
+        maxSize?: number;
+    };
+    defaultNetworkPolicy?: 'cache-first' | 'network-only' | 'cache-only' | 'network-and-cache' | 'stale-while-revalidate';
+    retry?: {
+        enabled?: boolean;
+        count?: number;
+        delay?: number | 'exponential';
+    };
+    debug?: boolean;
+}
+declare const DEFAULT_CONFIG: AlphaConfig;
+declare const naira = "\u20A6";
+declare const config: {
+    naira: string;
+    baseUrl: string;
+};
+
 type Method = 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH';
 type ContentType = 'json' | 'urlencoded' | 'multipart';
 interface HttpOptions {
@@ -393,6 +369,16 @@ interface HttpResponse<T = any> {
     };
     status: number;
 }
+/**
+ * Internal: Set current config (called by ConfigProvider)
+ * @param config - Alpha configuration
+ */
+declare function setHttpConfig(newConfig: AlphaConfig): void;
+/**
+ * Get current HTTP config
+ * @returns Current Alpha configuration
+ */
+declare function getHttpConfig(): AlphaConfig;
 /**
  * Check if an error is an abort/cancel error
  */
@@ -859,10 +845,32 @@ declare function useRefetchOnReconnect(enabled: boolean, refetch: () => void): v
  */
 declare function useRefetchInterval(enabled: boolean, refetch: () => void, interval: number): void;
 
-declare const config: {
-    naira: string;
-    baseUrl: string;
-};
+interface AlphaProviderProps {
+    children: ReactNode;
+    config: AlphaConfig;
+}
+/**
+ * Root provider for rn-alpha package
+ * Wraps your app with Redux, Config, and App contexts
+ *
+ * @example
+ * ```typescript
+ * <AlphaProvider config={{
+ *   baseUrl: 'https://api.example.com',
+ *   paths: { login: 'POST:/auth/login' },
+ *   debug: __DEV__,
+ * }}>
+ *   <App />
+ * </AlphaProvider>
+ * ```
+ */
+declare const AlphaProvider: React.FC<AlphaProviderProps>;
+
+/**
+ * Hook to access Alpha configuration
+ * @returns Current Alpha configuration
+ */
+declare function useAlphaConfig(): AlphaConfig;
 
 declare function money(num: number, decimal: number): string;
 
@@ -877,4 +885,4 @@ declare class Storage {
 }
 declare const _default: Storage;
 
-export { type ApiResponse, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, DEFAULT_CACHE_TTL, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type ErrorResponse, type HttpOptions, type HttpResponse, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createCacheEntry, createDebugger, createErrorResponse, createSuccessResponse, createTimeoutController, decrypt, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, getCacheAge, getCacheData, getCacheMetadata, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, retryWithBackoff, retryWithJitter, safeAbort, setMaxCacheSize, shouldRetry, _default as storage, store, useApp, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type ErrorResponse, type HttpOptions, type HttpResponse, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createCacheEntry, createDebugger, createErrorResponse, createSuccessResponse, createTimeoutController, decrypt, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, getCacheAge, getCacheData, getCacheMetadata, getHttpConfig, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, naira, retryWithBackoff, retryWithJitter, safeAbort, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, store, useAlphaConfig, useApp, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
