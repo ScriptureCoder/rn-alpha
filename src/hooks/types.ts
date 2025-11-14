@@ -10,6 +10,30 @@ export interface QueryOptions {
   init?: any;
   onCompleted?: (data: any) => void;
   onError?: (error: string, status?: number) => void;
+  // Cache TTL options
+  ttl?: number; // Cache expires after this time (ms)
+  staleTime?: number; // Cache considered stale after this time (ms)
+  // Background refetch options
+  refetchOnWindowFocus?: boolean;
+  refetchOnReconnect?: boolean;
+  refetchInterval?: number; // Auto-refetch interval (ms)
+  // Retry options
+  retry?: number | {
+    count: number;
+    delay: number | 'exponential';
+    retryCondition?: (error: any) => boolean;
+  };
+  // Debug options
+  debug?: boolean;
+}
+
+/**
+ * Timing information for requests
+ */
+export interface TimingInfo {
+  startTime: number;
+  endTime?: number;
+  duration?: number;
 }
 
 /**
@@ -34,6 +58,13 @@ export interface QueryResult {
   prepend: (data: any) => void;
   append: (data: any) => void;
   abort: () => void;
+  // NEW: Optimistic updates
+  optimisticUpdate: (
+    updater: (current: any) => any,
+    rollback?: () => void
+  ) => () => void;
+  // NEW: Request timing
+  timing?: TimingInfo;
 }
 
 /**
@@ -42,6 +73,16 @@ export interface QueryResult {
 export interface MutationOptions {
   keyboard?: boolean;
   text?: boolean;
+  // NEW: Offline queue support
+  offlineQueue?: boolean;
+  // NEW: Retry options
+  retry?: number | {
+    count: number;
+    delay: number | 'exponential';
+    retryCondition?: (error: any) => boolean;
+  };
+  // NEW: Debug mode
+  debug?: boolean;
 }
 
 /**
@@ -88,5 +129,9 @@ export interface CacheOperations {
   prepend: (key: string, data: any) => void;
   append: (key: string, data: any) => void;
   updateOrPrepend: (key: string, data: any) => void;
+  // NEW: Invalidation methods
+  invalidate: (key: string) => void;
+  invalidateQueries: (pattern: string | RegExp) => void;
+  invalidateAll: () => void;
 }
 

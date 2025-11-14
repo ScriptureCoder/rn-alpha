@@ -32,13 +32,21 @@ export const STATUS_CODES = {
 } as const;
 
 /**
+ * Cache TTL constants
+ */
+export const DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+export const DEFAULT_STALE_TIME = 0; // immediately stale (always refetch)
+export const MAX_CACHE_SIZE = 100; // LRU limit
+
+/**
  * Network policies for queries
  */
 export type NetworkPolicy =
   | "network-and-cache"
   | "cache-only"
   | "network-only"
-  | "cache-first";
+  | "cache-first"
+  | "stale-while-revalidate"; // NEW
 
 /**
  * Concat strategies for fetchMore

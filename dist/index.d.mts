@@ -85,9 +85,44 @@ type Route = keyof typeof PATHS;
 type Visibility = 'wallet' | 'savings' | 'investment' | 'total';
 
 /**
+ * Hook-related constants
+ */
+/**
+ * Network request timeout in milliseconds
+ */
+declare const NETWORK_TIMEOUT = 10000;
+/**
+ * Default error messages
+ */
+declare const ERROR_MESSAGES: {
+    readonly GENERIC: "Oops! an error occurred";
+    readonly NETWORK: "Network error occurred";
+    readonly TIMEOUT: "Request timed out";
+    readonly SESSION_EXPIRED: "Session expired! kindly login";
+    readonly UNAUTHORIZED: "Unauthorized access";
+};
+/**
+ * HTTP status codes
+ */
+declare const STATUS_CODES: {
+    readonly OK: 200;
+    readonly CREATED: 201;
+    readonly BAD_REQUEST: 400;
+    readonly UNAUTHORIZED: 401;
+    readonly FORBIDDEN: 403;
+    readonly NOT_FOUND: 404;
+    readonly SERVER_ERROR: 500;
+};
+/**
+ * Cache TTL constants
+ */
+declare const DEFAULT_CACHE_TTL: number;
+declare const DEFAULT_STALE_TIME = 0;
+declare const MAX_CACHE_SIZE = 100;
+/**
  * Network policies for queries
  */
-type NetworkPolicy = "network-and-cache" | "cache-only" | "network-only" | "cache-first";
+type NetworkPolicy = "network-and-cache" | "cache-only" | "network-only" | "cache-first" | "stale-while-revalidate";
 /**
  * Concat strategies for fetchMore
  */
@@ -102,6 +137,25 @@ interface QueryOptions {
     init?: any;
     onCompleted?: (data: any) => void;
     onError?: (error: string, status?: number) => void;
+    ttl?: number;
+    staleTime?: number;
+    refetchOnWindowFocus?: boolean;
+    refetchOnReconnect?: boolean;
+    refetchInterval?: number;
+    retry?: number | {
+        count: number;
+        delay: number | 'exponential';
+        retryCondition?: (error: any) => boolean;
+    };
+    debug?: boolean;
+}
+/**
+ * Timing information for requests
+ */
+interface TimingInfo {
+    startTime: number;
+    endTime?: number;
+    duration?: number;
 }
 /**
  * Query hook return type
@@ -124,6 +178,8 @@ interface QueryResult {
     prepend: (data: any) => void;
     append: (data: any) => void;
     abort: () => void;
+    optimisticUpdate: (updater: (current: any) => any, rollback?: () => void) => () => void;
+    timing?: TimingInfo;
 }
 /**
  * Mutation hook options
@@ -131,6 +187,13 @@ interface QueryResult {
 interface MutationOptions {
     keyboard?: boolean;
     text?: boolean;
+    offlineQueue?: boolean;
+    retry?: number | {
+        count: number;
+        delay: number | 'exponential';
+        retryCondition?: (error: any) => boolean;
+    };
+    debug?: boolean;
 }
 /**
  * Response type for mutations
@@ -174,6 +237,9 @@ interface CacheOperations {
     prepend: (key: string, data: any) => void;
     append: (key: string, data: any) => void;
     updateOrPrepend: (key: string, data: any) => void;
+    invalidate: (key: string) => void;
+    invalidateQueries: (pattern: string | RegExp) => void;
+    invalidateAll: () => void;
 }
 
 /**
@@ -241,18 +307,43 @@ interface AppState {
 
 declare const _default$1: () => redux_thunk.ThunkDispatch<{
     app: AppState;
-    cache: any;
+    cache: CacheState;
     tread: any;
 }, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
 
+/**
+ * Cache entry structure with TTL support
+ */
+interface CacheEntry {
+    data: any;
+    timestamp: number;
+    expiresAt?: number;
+    staleAt?: number;
+}
+interface CacheState {
+    [key: string]: CacheEntry | any;
+}
+interface CacheMetadata {
+    accessOrder: string[];
+    maxSize: number;
+}
+/**
+ * Set the maximum cache size for LRU eviction
+ */
+declare function setMaxCacheSize(size: number): void;
+/**
+ * Get current cache metadata (for debugging)
+ */
+declare function getCacheMetadata(): Readonly<CacheMetadata>;
+
 declare const store: _reduxjs_toolkit.EnhancedStore<{
     app: AppState;
-    cache: any;
+    cache: CacheState;
     tread: any;
 }, redux.UnknownAction, _reduxjs_toolkit.Tuple<[redux.StoreEnhancer<{
     dispatch: redux_thunk.ThunkDispatch<{
         app: AppState;
-        cache: any;
+        cache: CacheState;
         tread: any;
     }, undefined, redux.UnknownAction>;
 }>, redux.StoreEnhancer]>>;
@@ -478,6 +569,296 @@ declare const createTimeoutController: (timeoutMs: number) => {
  */
 declare const combineAbortSignals: (signals: AbortSignal[]) => AbortController;
 
+/**
+ * Request Deduplication System
+ * Prevents duplicate in-flight requests with the same key
+ * All components requesting the same data share the same Promise
+ */
+/**
+ * Gets an existing in-flight request or creates a new one
+ * @param key - Unique identifier for the request
+ * @param requestFn - Function that performs the actual request
+ * @returns Promise that resolves with the request result
+ *
+ * @example
+ * const result = await getOrCreateRequest('users-123', () =>
+ *   http('/users/123', 'GET')
+ * );
+ */
+declare function getOrCreateRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T>;
+/**
+ * Manually cancel/remove a request from the in-flight queue
+ * Useful when aborting a request
+ * @param key - The request key to cancel
+ */
+declare function cancelRequest(key: string): void;
+/**
+ * Check if a request is currently in flight
+ * @param key - The request key to check
+ * @returns True if request is in progress
+ */
+declare function isRequestInFlight(key: string): boolean;
+/**
+ * Get the number of in-flight requests
+ * Useful for debugging and monitoring
+ */
+declare function getInFlightCount(): number;
+/**
+ * Clear all in-flight requests
+ * Useful for testing or when resetting application state
+ */
+declare function clearAllRequests(): void;
+
+/**
+ * Cache Helper Utilities
+ * Functions for validating cache freshness, expiry, and staleness
+ */
+
+/**
+ * Checks if a cache entry has expired based on its TTL
+ * @param entry - The cache entry to check
+ * @returns True if the cache has expired
+ *
+ * @example
+ * const entry = { data: {...}, timestamp: Date.now(), expiresAt: Date.now() - 1000 };
+ * isCacheExpired(entry); // true
+ */
+declare function isCacheExpired(entry: CacheEntry | any): boolean;
+/**
+ * Checks if a cache entry is stale and should be refetched
+ * @param entry - The cache entry to check
+ * @returns True if the cache is stale
+ *
+ * @example
+ * const entry = { data: {...}, timestamp: Date.now(), staleAt: Date.now() - 1000 };
+ * isCacheStale(entry); // true
+ */
+declare function isCacheStale(entry: CacheEntry | any): boolean;
+/**
+ * Checks if a cache entry is fresh (not expired and not stale)
+ * @param entry - The cache entry to check
+ * @returns True if the cache is fresh
+ *
+ * @example
+ * const entry = {
+ *   data: {...},
+ *   timestamp: Date.now(),
+ *   expiresAt: Date.now() + 10000,
+ *   staleAt: Date.now() + 5000
+ * };
+ * isCacheFresh(entry); // true
+ */
+declare function isCacheFresh(entry: CacheEntry | any): boolean;
+/**
+ * Extracts data from a cache entry, handling both new and old formats
+ * @param entry - The cache entry
+ * @returns The actual data
+ */
+declare function getCacheData(entry: CacheEntry | any): any;
+/**
+ * Creates a cache entry with TTL and stale time
+ * @param data - The data to cache
+ * @param ttl - Time to live in milliseconds (optional)
+ * @param staleTime - Time until stale in milliseconds (optional)
+ * @returns A properly formatted cache entry
+ */
+declare function createCacheEntry(data: any, ttl?: number, staleTime?: number): CacheEntry;
+/**
+ * Gets the age of a cache entry in milliseconds
+ * @param entry - The cache entry
+ * @returns Age in milliseconds
+ */
+declare function getCacheAge(entry: CacheEntry | any): number;
+/**
+ * Checks if cache entry exists and is not expired
+ * @param entry - The cache entry
+ * @returns True if cache can be used
+ */
+declare function canUseCache(entry: CacheEntry | any): boolean;
+
+/**
+ * Debug Logger for Query/Mutation Hooks
+ * Provides detailed logging for debugging cache hits, network requests, and timing
+ */
+interface QueryDebugInfo {
+    key: string;
+    action: 'cache-hit' | 'cache-miss' | 'fetch-start' | 'fetch-success' | 'fetch-error' | 'invalidate';
+    timestamp: number;
+    duration?: number;
+    data?: any;
+    error?: any;
+    variables?: any;
+}
+/**
+ * Query Debugger Class
+ * Provides structured logging for debugging data fetching
+ */
+declare class QueryDebugger {
+    private enabled;
+    private prefix;
+    constructor(enabled: boolean, prefix?: string);
+    /**
+     * Log a cache hit
+     */
+    logCacheHit(key: string, data: any): void;
+    /**
+     * Log a cache miss
+     */
+    logCacheMiss(key: string): void;
+    /**
+     * Log the start of a fetch request
+     */
+    logFetchStart(key: string, variables?: any): void;
+    /**
+     * Log a successful fetch
+     */
+    logFetchSuccess(key: string, duration?: number, data?: any): void;
+    /**
+     * Log a fetch error
+     */
+    logFetchError(key: string, error: any, duration?: number): void;
+    /**
+     * Log cache invalidation
+     */
+    logInvalidate(key: string | RegExp): void;
+    /**
+     * Log network policy decision
+     */
+    logPolicy(key: string, policy: string, decision: string): void;
+    /**
+     * Log cache expiry check
+     */
+    logCacheExpiry(key: string, isExpired: boolean, isStale: boolean): void;
+    /**
+     * Log request deduplication
+     */
+    logDeduplication(key: string, isDuplicate: boolean): void;
+    /**
+     * Get the size of data (array length or object keys)
+     */
+    private getDataSize;
+}
+declare function enableGlobalDebug(): void;
+declare function disableGlobalDebug(): void;
+declare function isGlobalDebugEnabled(): boolean;
+/**
+ * Create a debugger instance
+ */
+declare function createDebugger(enabled?: boolean, prefix?: string): QueryDebugger;
+
+/**
+ * Retry Manager with Exponential Backoff
+ * Provides intelligent retry logic for failed requests
+ */
+interface RetryOptions {
+    retries: number;
+    delay: number | 'exponential';
+    condition?: (error: any) => boolean;
+    maxDelay?: number;
+}
+/**
+ * Retries a function with exponential backoff
+ * @param fn - The function to retry
+ * @param options - Retry configuration
+ * @returns Promise that resolves when function succeeds or retries are exhausted
+ *
+ * @example
+ * const data = await retryWithBackoff(
+ *   () => http('/api/data', 'GET'),
+ *   { retries: 3, delay: 'exponential' }
+ * );
+ */
+declare function retryWithBackoff<T>(fn: () => Promise<T>, options: RetryOptions): Promise<T>;
+/**
+ * Retry with jitter (adds randomness to prevent thundering herd)
+ */
+declare function retryWithJitter<T>(fn: () => Promise<T>, options: RetryOptions & {
+    jitter?: number;
+}): Promise<T>;
+
+/**
+ * Offline Queue for Mutations
+ * Queues mutations when offline and replays them when connection is restored
+ */
+
+interface QueuedMutation {
+    id: string;
+    route: Route;
+    variables: Record<string, any>;
+    timestamp: number;
+    retries: number;
+    maxRetries: number;
+}
+/**
+ * Offline Mutation Queue
+ * Persists mutations to local storage and processes them when online
+ */
+declare class OfflineQueue {
+    private queue;
+    private isProcessing;
+    constructor();
+    /**
+     * Adds a mutation to the queue
+     */
+    enqueue(mutation: Omit<QueuedMutation, 'id' | 'timestamp' | 'retries' | 'maxRetries'>): Promise<string>;
+    /**
+     * Processes the queue
+     */
+    processQueue(onProcess: (item: QueuedMutation) => Promise<void>): Promise<void>;
+    /**
+     * Gets the current queue
+     */
+    getQueue(): ReadonlyArray<QueuedMutation>;
+    /**
+     * Gets the queue size
+     */
+    size(): number;
+    /**
+     * Clears the entire queue
+     */
+    clear(): Promise<void>;
+    /**
+     * Removes a specific mutation from the queue
+     */
+    remove(id: string): Promise<boolean>;
+    /**
+     * Persists queue to storage
+     */
+    private persist;
+    /**
+     * Loads queue from storage
+     */
+    private loadFromStorage;
+}
+/**
+ * Gets the singleton queue instance
+ */
+declare function getOfflineQueue(): OfflineQueue;
+
+/**
+ * Refetch Manager
+ * Handles background refetching on focus, reconnect, and intervals
+ */
+/**
+ * Refetches when app comes to foreground
+ * @param enabled - Whether this behavior is enabled
+ * @param refetch - Function to call for refetching
+ */
+declare function useRefetchOnFocus(enabled: boolean, refetch: () => void): void;
+/**
+ * Refetches when network reconnects
+ * @param enabled - Whether this behavior is enabled
+ * @param refetch - Function to call for refetching
+ */
+declare function useRefetchOnReconnect(enabled: boolean, refetch: () => void): void;
+/**
+ * Refetches at a regular interval
+ * @param enabled - Whether polling is enabled
+ * @param refetch - Function to call for refetching
+ * @param interval - Interval in milliseconds
+ */
+declare function useRefetchInterval(enabled: boolean, refetch: () => void, interval: number): void;
+
 declare const config: {
     naira: string;
     baseUrl: string;
@@ -496,4 +877,4 @@ declare class Storage {
 }
 declare const _default: Storage;
 
-export { type ApiResponse, type AppDispatch, AppProvider, type CacheOperations, type ConcatStrategy, type ContentType, type DashboardStackList, type ErrorResponse, type HttpOptions, type HttpResponse, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, type NetworkPolicy, PATHS, type ParsedRoute, type QueryOptions, type QueryResult, type RootStackParamList, type RootState, type Route, type SheetProps, type SuccessResponse, type Visibility, type Weight, config as alphaConfig, combineAbortSignals, createAbortController, createErrorResponse, createSuccessResponse, createTimeoutController, decrypt, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, isAbortError, isAuthError, isCancelError, isAbortError$1 as isHttpAbortError, isSuccessStatus, safeAbort, shouldRetry, _default as storage, store, useApp, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useSelector };
+export { type ApiResponse, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, DEFAULT_CACHE_TTL, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type ErrorResponse, type HttpOptions, type HttpResponse, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createCacheEntry, createDebugger, createErrorResponse, createSuccessResponse, createTimeoutController, decrypt, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, getCacheAge, getCacheData, getCacheMetadata, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, retryWithBackoff, retryWithJitter, safeAbort, setMaxCacheSize, shouldRetry, _default as storage, store, useApp, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };

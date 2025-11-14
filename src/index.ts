@@ -26,6 +26,7 @@ export type {
   MutationResponse,
   MutationResult,
   CacheOperations,
+  TimingInfo,
 } from './hooks/types';
 export type { NetworkPolicy, ConcatStrategy } from './hooks/constants';
 export type {
@@ -34,6 +35,10 @@ export type {
   SuccessResponse,
   ApiResponse,
 } from './hooks/utils';
+
+// Cache types
+export type { CacheEntry, CacheState, CacheMetadata } from './store/reducers/cache-reducer';
+export { setMaxCacheSize, getCacheMetadata } from './store/reducers/cache-reducer';
 
 // HTTP service types and utilities
 export type { HttpOptions, ContentType, HttpResponse } from './utils/service';
@@ -61,6 +66,57 @@ export {
   createSuccessResponse,
 } from './hooks/utils/error-handler';
 
+// NEW: Request deduplication
+export {
+  getOrCreateRequest,
+  cancelRequest,
+  isRequestInFlight,
+  getInFlightCount,
+  clearAllRequests,
+} from './hooks/utils/request-queue';
+
+// NEW: Cache helpers
+export {
+  isCacheExpired,
+  isCacheStale,
+  isCacheFresh,
+  getCacheData,
+  createCacheEntry,
+  getCacheAge,
+  canUseCache,
+} from './hooks/utils/cache-helpers';
+
+// NEW: Debug logger
+export {
+  QueryDebugger,
+  createDebugger,
+  enableGlobalDebug,
+  disableGlobalDebug,
+  isGlobalDebugEnabled,
+} from './hooks/utils/debug-logger';
+export type { QueryDebugInfo } from './hooks/utils/debug-logger';
+
+// NEW: Retry manager
+export {
+  retryWithBackoff,
+  retryWithJitter,
+} from './hooks/utils/retry-manager';
+export type { RetryOptions } from './hooks/utils/retry-manager';
+
+// NEW: Offline queue
+export {
+  OfflineQueue,
+  getOfflineQueue,
+} from './hooks/utils/offline-queue';
+export type { QueuedMutation } from './hooks/utils/offline-queue';
+
+// NEW: Refetch hooks
+export {
+  useRefetchOnFocus,
+  useRefetchOnReconnect,
+  useRefetchInterval,
+} from './hooks/utils/refetch-manager';
+
 // Store exports
 export { default as AppProvider } from './store/contexts/app-context';
 export { store } from './store';
@@ -73,3 +129,13 @@ export * from './types';
 export { default as formatMoney } from './utils/money';
 export * from './utils/crypto';
 export { default as storage } from './utils/storage';
+
+// NEW: Constants
+export {
+  DEFAULT_CACHE_TTL,
+  DEFAULT_STALE_TIME,
+  MAX_CACHE_SIZE,
+  NETWORK_TIMEOUT,
+  ERROR_MESSAGES,
+  STATUS_CODES,
+} from './hooks/constants';

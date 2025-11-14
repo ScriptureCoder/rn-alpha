@@ -102,32 +102,70 @@ For comprehensive examples including Content-Type switching, advanced patterns, 
 
 ## Features
 
-### Data Fetching & Mutations
+### 🚀 Data Fetching & Mutations
 
-- **`useQuery`** - Data fetching with caching, network policies, and automatic request cancellation
-- **`useQueryAsync`** - Async data fetching without subscriptions
-- **`useMutation`** - POST/PUT/DELETE operations with loading states and cancellation
+- **`useQuery`** - Advanced data fetching with:
+  - ✅ Request deduplication (prevents duplicate simultaneous requests)
+  - ✅ Cache TTL & expiry management
+  - ✅ Stale-while-revalidate policy
+  - ✅ Automatic request cancellation
+  - ✅ Background refetch (on focus/reconnect)
+  - ✅ Optimistic updates with rollback
+  - ✅ Request timing & performance metrics
+  - ✅ Debug mode for development
+  
+- **`useQueryAsync`** - Async data fetching with abort signal support
+- **`useMutation`** - POST/PUT/DELETE operations with:
+  - ✅ Offline queue support
+  - ✅ Automatic retry with exponential backoff
+  - ✅ Request cancellation
+  
 - **`useMutationAsync`** - Async mutations with legacy route support
 
-### HTTP Service
+### ⚡ HTTP Service
 
 Built on Axios with modern features:
 
 - ✅ **Multiple Content-Types** - JSON (default), URL-encoded, multipart form data
 - ✅ **Request Cancellation** - AbortController support to prevent race conditions
+- ✅ **Request Deduplication** - Automatic deduplication of identical in-flight requests
 - ✅ **Automatic Retry Logic** - Built-in retry helpers with exponential backoff
 - ✅ **Better Error Handling** - Distinguish between network errors, HTTP errors, and cancellations
 - ✅ **Type Safety** - Full TypeScript support with proper type inference
 
-### Helper Utilities
+### 🗄️ Intelligent Caching
 
-- **HTTP Helpers** - `createAbortController`, `isAbortError`, `shouldRetry`, `formatFormData`, `combineAbortSignals`
-- **Error Handlers** - `extractErrorMessage`, `isSuccessStatus`, `isAuthError`, `createErrorResponse`
+- **Cache TTL & Expiry** - Automatic cache expiration based on time-to-live
+- **LRU Eviction** - Automatic cleanup when cache grows too large (default: 100 entries)
+- **Stale-While-Revalidate** - Show cached data instantly while fetching fresh data in background
+- **Cache Invalidation** - Pattern-based cache invalidation (`invalidate`, `invalidateQueries`, `invalidateAll`)
+- **Cache Helpers** - `isCacheExpired`, `isCacheStale`, `isCacheFresh`, `getCacheData`
+
+### 🔧 Developer Tools
+
+- **Debug Mode** - Detailed logging of cache hits, network requests, and timing
+- **Request Timing** - Track performance of every request
+- **Query Debugger** - Structured logging with `QueryDebugger` class
+- **Cache Metadata** - Inspect cache state and LRU order
+
+### 🌐 Network Resilience
+
+- **Offline Queue** - Automatically queue mutations when offline and replay on reconnect
+- **Retry with Backoff** - Exponential backoff for failed requests with custom conditions
+- **Background Refetch** - Auto-refetch on window focus, reconnect, or at intervals
+- **Request Cancellation** - Prevent memory leaks and race conditions
+
+### 🎯 Helper Utilities
+
+- **HTTP Helpers** - `createAbortController`, `isAbortError`, `shouldRetry`, `formatFormData`, `combineAbortSignals`, `createTimeoutController`
+- **Error Handlers** - `extractErrorMessage`, `isSuccessStatus`, `isAuthError`, `createErrorResponse`, `shouldRetry`
+- **Refetch Hooks** - `useRefetchOnFocus`, `useRefetchOnReconnect`, `useRefetchInterval`
 - **Other Utilities** - `formatMoney`, `encrypt`, `decrypt`, `storage`
 
-### Store & Context
+### 📦 Store & Context
 
-- **Redux Store** - Pre-configured store with cache and app reducers
+- **Redux Store** - Pre-configured store with intelligent cache and app reducers
+- **Cache with TTL** - Built-in support for cache entries with expiry and staleness
 - **Context Providers** - `AppProvider` for global app state
 - **Typed Hooks** - `useDispatch`, `useSelector` with full TypeScript support
 
@@ -135,16 +173,43 @@ Built on Axios with modern features:
 
 The package exports:
 
-- **Hooks** - `useQuery`, `useQueryAsync`, `useMutation`, `useMutationAsync`, `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`
-- **HTTP Utilities** - `createAbortController`, `isAbortError`, `shouldRetry`, `formatFormData`, `formatUrlEncoded`, `combineAbortSignals`, `createTimeoutController`
-- **Error Handlers** - `extractErrorMessage`, `isSuccessStatus`, `isAuthError`, `createErrorResponse`, `createSuccessResponse`
-- **Types** - All hook options, results, and response types
-- **Store** - `AppProvider`, `store`, `AppDispatch`, `RootState`
-- **Utilities** - `formatMoney`, `encrypt`, `decrypt`, `storage`
-- **API Paths** - `PATHS` - predefined API route definitions
-- **Date Utilities** - `dayjs` with timezone and relative time plugins
+### Core Hooks
+- `useQuery`, `useQueryAsync`, `useMutation`, `useMutationAsync`
+- `useDispatch`, `useSelector`, `useApp`, `useCache`, `useUpload`
 
-See `src/index.ts` for the full export surface.
+### HTTP & Network
+- `createAbortController`, `cancelRequest`, `isRequestInFlight`, `getInFlightCount`
+- `formatFormData`, `formatUrlEncoded`, `combineAbortSignals`, `createTimeoutController`
+- `getOrCreateRequest` (request deduplication)
+
+### Cache Management
+- `isCacheExpired`, `isCacheStale`, `isCacheFresh`, `getCacheData`
+- `createCacheEntry`, `getCacheAge`, `canUseCache`
+- `setMaxCacheSize`, `getCacheMetadata`
+
+### Error Handling
+- `extractErrorMessage`, `isSuccessStatus`, `isAuthError`
+- `createErrorResponse`, `createSuccessResponse`, `shouldRetry`
+- `isAbortError`, `isCancelError`
+
+### Advanced Features
+- `QueryDebugger`, `createDebugger`, `enableGlobalDebug`
+- `retryWithBackoff`, `retryWithJitter`
+- `OfflineQueue`, `getOfflineQueue`
+- `useRefetchOnFocus`, `useRefetchOnReconnect`, `useRefetchInterval`
+
+### Types & Constants
+- All hook options, results, and response types (`QueryOptions`, `QueryResult`, `MutationOptions`, etc.)
+- `DEFAULT_CACHE_TTL`, `DEFAULT_STALE_TIME`, `MAX_CACHE_SIZE`
+- `NetworkPolicy`, `ConcatStrategy`, `TimingInfo`
+
+### Store & Utilities
+- `AppProvider`, `store`, `AppDispatch`, `RootState`
+- `formatMoney`, `encrypt`, `decrypt`, `storage`
+- `PATHS` - predefined API route definitions
+- `dayjs` with timezone and relative time plugins
+
+See `src/index.ts` for the complete export surface.
 
 ## Building the package
 

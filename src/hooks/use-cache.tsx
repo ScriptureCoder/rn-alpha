@@ -8,6 +8,14 @@ import { parseRoute } from "./utils/route-parser";
 import { CacheOperations } from "./types";
 
 /**
+ * Helper function to get the ID from an item
+ * Checks both _id (MongoDB) and id (standard) fields
+ */
+const getItemId = (item: any): string | undefined => {
+  return item?._id || item?.id;
+};
+
+/**
  * Custom hook for cache operations
  * Provides functions to get, set, and manipulate cached data
  * @returns CacheOperations interface with all cache manipulation functions
@@ -75,7 +83,7 @@ const useCache = (): CacheOperations => {
     (key: string, id: string, value: any) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        const index = cache.findIndex((item: any) => item._id === id);
+        const index = cache.findIndex((item: any) => getItemId(item) === id);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...value };
@@ -93,7 +101,7 @@ const useCache = (): CacheOperations => {
     (key: string, id: string) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        return cache.find((item: any) => item._id === id);
+        return cache.find((item: any) => getItemId(item) === id);
       }
       return undefined;
     },
@@ -148,7 +156,8 @@ const useCache = (): CacheOperations => {
     (key: string, data: any) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        const index = cache.findIndex((item: any) => item._id === data._id);
+        const dataId = getItemId(data);
+        const index = cache.findIndex((item: any) => getItemId(item) === dataId);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...data };
@@ -185,11 +194,48 @@ const useCache = (): CacheOperations => {
     (key: string, id: string) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        setCache(key, cache.filter((item: any) => item._id !== id));
+        setCache(key, cache.filter((item: any) => getItemId(item) !== id));
       }
     },
     [cacheState, setCache]
   );
+
+  /**
+   * Invalidates a specific cache entry
+   */
+  const invalidate = useCallback(
+    (key: string) => {
+      dispatch(actions.delete({ key }));
+    },
+    [dispatch]
+  );
+
+  /**
+   * Invalidates all queries matching a pattern
+   * @param pattern - String prefix or RegExp pattern
+   */
+  const invalidateQueries = useCallback(
+    (pattern: string | RegExp) => {
+      const regex =
+        typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
+
+      const keysToInvalidate = Object.keys(cacheState).filter((k) =>
+        regex.test(k)
+      );
+
+      keysToInvalidate.forEach((key) => {
+        dispatch(actions.delete({ key }));
+      });
+    },
+    [cacheState, dispatch]
+  );
+
+  /**
+   * Invalidates all cache entries
+   */
+  const invalidateAll = useCallback(() => {
+    dispatch(actions.clear());
+  }, [dispatch]);
 
   return {
     getItem,
@@ -205,6 +251,9 @@ const useCache = (): CacheOperations => {
     prepend,
     append,
     updateOrPrepend,
+    invalidate,
+    invalidateQueries,
+    invalidateAll,
   };
 };
 

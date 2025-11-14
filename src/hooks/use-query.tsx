@@ -16,6 +16,12 @@ import {
   isAuthError,
   isAbortError,
 } from "./utils/error-handler";
+import { getOrCreateRequest, cancelRequest } from "./utils/request-queue";
+import {
+  isCacheExpired,
+  isCacheStale,
+  getCacheData,
+} from "./utils/cache-helpers";
 
 /**
  * Custom hook for data fetching with caching support
@@ -118,6 +124,18 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
             }
           }, NETWORK_TIMEOUT);
           return;
+        case "stale-while-revalidate":
+          // Show stale data immediately if available and not expired
+          if (data && !isCacheExpired(data)) {
+            // If data is stale, refetch in background
+            if (isCacheStale(data)) {
+              fetchHandler(fetchVariables).catch(() => {});
+            }
+          } else {
+            // No cache or expired, fetch normally
+            fetchHandler(fetchVariables).catch(() => {});
+          }
+          return;
       }
     },
     [policy, data, thread]
@@ -141,15 +159,18 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           
           setThread(true);
           
-          const res: any = await http(
-            path,
-            (method as Method) || "GET",
-            fetchVariables,
-            {
-              returnStatus: true,
-              auth: auth.accessToken,
-              signal: abortControllerRef.current.signal,
-            }
+          // Use request deduplication to prevent duplicate requests
+          const res: any = await getOrCreateRequest(key, () =>
+            http(
+              path,
+              (method as Method) || "GET",
+              fetchVariables,
+              {
+                returnStatus: true,
+                auth: auth.accessToken,
+                signal: abortControllerRef.current.signal,
+              }
+            )
           );
           
           const error = !isSuccessStatus(res.status)
@@ -264,7 +285,32 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-  }, []);
+    // Also remove from deduplication queue
+    cancelRequest(key);
+  }, [key]);
+
+  /**
+   * Optimistic update with automatic rollback
+   */
+  const optimisticUpdate = useCallback(
+    (updater: (current: any) => any, rollback?: () => void) => {
+      const currentData = data;
+      const newData = updater(currentData);
+
+      // Update immediately
+      cache.update(key, newData);
+
+      // Return rollback function
+      return () => {
+        if (rollback) {
+          rollback();
+        } else {
+          cache.update(key, currentData);
+        }
+      };
+    },
+    [data, key, cache]
+  );
 
   /**
    * Cache manipulation functions bound to current key
@@ -304,6 +350,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
     key,
     fetchMore,
     abort,
+    optimisticUpdate,
     ...extendCache,
   };
 };

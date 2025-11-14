@@ -1,3 +1,65 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/utils/storage.ts
+var storage_exports = {};
+__export(storage_exports, {
+  default: () => storage_default
+});
+import { MMKV } from "react-native-mmkv";
+var storage, Storage, storage_default;
+var init_storage = __esm({
+  "src/utils/storage.ts"() {
+    storage = new MMKV();
+    Storage = class {
+      constructor() {
+        this.setItem = (key2, value) => {
+          try {
+            return storage.set(key2, JSON.stringify(value));
+          } catch (e) {
+          }
+        };
+        this.getItem = (key2) => {
+          try {
+            const value = storage.getString(key2);
+            if (value) {
+              return JSON.parse(value);
+            }
+            return void 0;
+          } catch (e) {
+          }
+        };
+        this.removeItem = (key2) => {
+          try {
+            storage.delete(key2);
+          } catch (e) {
+          }
+        };
+        this.clear = async () => storage.clearAll();
+      }
+    };
+    storage_default = new Storage();
+  }
+});
+
 // src/index.ts
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -162,6 +224,11 @@ var isAbortError = (error) => {
 
 // src/store/reducers/cache-reducer.tsx
 import { createSlice } from "@reduxjs/toolkit";
+var metadata = {
+  accessOrder: [],
+  maxSize: 100
+  // Default LRU limit
+};
 var initialState = {};
 var cacheSlice = createSlice({
   name: "cache",
@@ -174,15 +241,16 @@ var cacheSlice = createSlice({
       };
     },
     set(state, action) {
-      const timestamp = (/* @__PURE__ */ new Date()).getTime();
-      const { key: key2, value } = action.payload;
-      if (Array.isArray(value)) {
-        state[key2] = value.map((data) => ({ ...data, timestamp }));
-      } else if (typeof value === "object" && Object.keys(value).length > 0) {
-        state[key2] = { ...value, timestamp };
-      } else {
-        state[key2] = value;
-      }
+      const timestamp = Date.now();
+      const { key: key2, value, ttl, staleTime } = action.payload;
+      updateAccessOrder(state, key2);
+      const entry = {
+        data: value,
+        timestamp,
+        expiresAt: ttl ? timestamp + ttl : void 0,
+        staleAt: staleTime !== void 0 ? timestamp + staleTime : void 0
+      };
+      state[key2] = entry;
     },
     prepend(state, action) {
       const timestamp = (/* @__PURE__ */ new Date()).getTime();
@@ -204,9 +272,37 @@ var cacheSlice = createSlice({
     remove(state, action) {
       delete state[action.payload];
     },
-    clear: () => initialState
+    clear: () => initialState,
+    // New action to delete a specific cache entry
+    delete(state, action) {
+      const { key: key2 } = action.payload;
+      delete state[key2];
+      const index = metadata.accessOrder.indexOf(key2);
+      if (index > -1) {
+        metadata.accessOrder.splice(index, 1);
+      }
+    }
   }
 });
+function updateAccessOrder(state, key2) {
+  const index = metadata.accessOrder.indexOf(key2);
+  if (index > -1) {
+    metadata.accessOrder.splice(index, 1);
+  }
+  metadata.accessOrder.push(key2);
+  if (metadata.accessOrder.length > metadata.maxSize) {
+    const evictKey = metadata.accessOrder.shift();
+    if (evictKey) {
+      delete state[evictKey];
+    }
+  }
+}
+function setMaxCacheSize(size) {
+  metadata.maxSize = size;
+}
+function getCacheMetadata() {
+  return { ...metadata };
+}
 var actions = cacheSlice.actions;
 var cache_reducer_default = cacheSlice.reducer;
 
@@ -522,6 +618,9 @@ function parseRoute(route, variables = {}, customerId) {
 }
 
 // src/hooks/use-cache.tsx
+var getItemId = (item) => {
+  return (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
+};
 var useCache = () => {
   const dispatch = use_dispatch_default();
   const { auth: { customerId } } = useApp();
@@ -561,7 +660,7 @@ var useCache = () => {
     (key2, id, value) => {
       const cache = cacheState[key2];
       if (Array.isArray(cache)) {
-        const index = cache.findIndex((item) => item._id === id);
+        const index = cache.findIndex((item) => getItemId(item) === id);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...value };
@@ -575,7 +674,7 @@ var useCache = () => {
     (key2, id) => {
       const cache = cacheState[key2];
       if (Array.isArray(cache)) {
-        return cache.find((item) => item._id === id);
+        return cache.find((item) => getItemId(item) === id);
       }
       return void 0;
     },
@@ -614,7 +713,8 @@ var useCache = () => {
     (key2, data) => {
       const cache = cacheState[key2];
       if (Array.isArray(cache)) {
-        const index = cache.findIndex((item) => item._id === data._id);
+        const dataId = getItemId(data);
+        const index = cache.findIndex((item) => getItemId(item) === dataId);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...data };
@@ -643,11 +743,32 @@ var useCache = () => {
     (key2, id) => {
       const cache = cacheState[key2];
       if (Array.isArray(cache)) {
-        setCache(key2, cache.filter((item) => item._id !== id));
+        setCache(key2, cache.filter((item) => getItemId(item) !== id));
       }
     },
     [cacheState, setCache]
   );
+  const invalidate = useCallback(
+    (key2) => {
+      dispatch(actions.delete({ key: key2 }));
+    },
+    [dispatch]
+  );
+  const invalidateQueries = useCallback(
+    (pattern) => {
+      const regex = typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
+      const keysToInvalidate = Object.keys(cacheState).filter(
+        (k) => regex.test(k)
+      );
+      keysToInvalidate.forEach((key2) => {
+        dispatch(actions.delete({ key: key2 }));
+      });
+    },
+    [cacheState, dispatch]
+  );
+  const invalidateAll = useCallback(() => {
+    dispatch(actions.clear());
+  }, [dispatch]);
   return {
     getItem,
     setCache,
@@ -661,7 +782,10 @@ var useCache = () => {
     deleteItem,
     prepend,
     append,
-    updateOrPrepend
+    updateOrPrepend,
+    invalidate,
+    invalidateQueries,
+    invalidateAll
   };
 };
 var use_cache_default = useCache;
@@ -675,6 +799,18 @@ var ERROR_MESSAGES = {
   SESSION_EXPIRED: "Session expired! kindly login",
   UNAUTHORIZED: "Unauthorized access"
 };
+var STATUS_CODES = {
+  OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  SERVER_ERROR: 500
+};
+var DEFAULT_CACHE_TTL = 5 * 60 * 1e3;
+var DEFAULT_STALE_TIME = 0;
+var MAX_CACHE_SIZE = 100;
 
 // src/hooks/utils/error-handler.ts
 function extractErrorMessage(response, defaultMessage = "Oops! an error occurred") {
@@ -707,6 +843,97 @@ function isAbortError2(error) {
   var _a, _b;
   if (!error) return false;
   return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
+}
+function shouldRetry(error) {
+  var _a, _b, _c;
+  if (isAbortError2(error)) {
+    return false;
+  }
+  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
+    return false;
+  }
+  if (isAuthError((_c = error.response) == null ? void 0 : _c.status)) {
+    return false;
+  }
+  return true;
+}
+
+// src/hooks/utils/request-queue.ts
+var inFlightRequests = /* @__PURE__ */ new Map();
+function getOrCreateRequest(key2, requestFn) {
+  if (inFlightRequests.has(key2)) {
+    return inFlightRequests.get(key2);
+  }
+  const promise = requestFn().finally(() => {
+    inFlightRequests.delete(key2);
+  });
+  inFlightRequests.set(key2, promise);
+  return promise;
+}
+function cancelRequest(key2) {
+  inFlightRequests.delete(key2);
+}
+function isRequestInFlight(key2) {
+  return inFlightRequests.has(key2);
+}
+function getInFlightCount() {
+  return inFlightRequests.size;
+}
+function clearAllRequests() {
+  inFlightRequests.clear();
+}
+
+// src/hooks/utils/cache-helpers.ts
+function isCacheExpired(entry) {
+  if (!entry || typeof entry !== "object") {
+    return false;
+  }
+  if ("expiresAt" in entry && entry.expiresAt) {
+    return Date.now() > entry.expiresAt;
+  }
+  return false;
+}
+function isCacheStale(entry) {
+  if (!entry || typeof entry !== "object") {
+    return true;
+  }
+  if ("staleAt" in entry) {
+    if (entry.staleAt === void 0) {
+      return false;
+    }
+    return Date.now() > entry.staleAt;
+  }
+  return true;
+}
+function isCacheFresh(entry) {
+  return !isCacheExpired(entry) && !isCacheStale(entry);
+}
+function getCacheData(entry) {
+  if (!entry) {
+    return void 0;
+  }
+  if ("data" in entry && "timestamp" in entry) {
+    return entry.data;
+  }
+  return entry;
+}
+function createCacheEntry(data, ttl, staleTime) {
+  const timestamp = Date.now();
+  return {
+    data,
+    timestamp,
+    expiresAt: ttl ? timestamp + ttl : void 0,
+    staleAt: staleTime !== void 0 ? timestamp + staleTime : void 0
+  };
+}
+function getCacheAge(entry) {
+  if (!entry || !entry.timestamp) {
+    return Infinity;
+  }
+  return Date.now() - entry.timestamp;
+}
+function canUseCache(entry) {
+  return entry && !isCacheExpired(entry);
 }
 
 // src/hooks/use-query.tsx
@@ -786,6 +1013,17 @@ var useQuery = (route, args) => {
             }
           }, NETWORK_TIMEOUT);
           return;
+        case "stale-while-revalidate":
+          if (data && !isCacheExpired(data)) {
+            if (isCacheStale(data)) {
+              fetchHandler(fetchVariables).catch(() => {
+              });
+            }
+          } else {
+            fetchHandler(fetchVariables).catch(() => {
+            });
+          }
+          return;
       }
     },
     [policy, data, thread]
@@ -799,15 +1037,18 @@ var useQuery = (route, args) => {
           }
           abortControllerRef.current = new AbortController();
           setThread(true);
-          const res = await service_default(
-            path,
-            method || "GET",
-            fetchVariables,
-            {
-              returnStatus: true,
-              auth: auth.accessToken,
-              signal: abortControllerRef.current.signal
-            }
+          const res = await getOrCreateRequest(
+            key2,
+            () => service_default(
+              path,
+              method || "GET",
+              fetchVariables,
+              {
+                returnStatus: true,
+                auth: auth.accessToken,
+                signal: abortControllerRef.current.signal
+              }
+            )
           );
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
           setThread(false, error);
@@ -894,7 +1135,23 @@ var useQuery = (route, args) => {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-  }, []);
+    cancelRequest(key2);
+  }, [key2]);
+  const optimisticUpdate = useCallback2(
+    (updater, rollback) => {
+      const currentData = data;
+      const newData = updater(currentData);
+      cache.update(key2, newData);
+      return () => {
+        if (rollback) {
+          rollback();
+        } else {
+          cache.update(key2, currentData);
+        }
+      };
+    },
+    [data, key2, cache]
+  );
   const extendCache = useMemo2(
     () => ({
       update: (newData) => {
@@ -929,6 +1186,7 @@ var useQuery = (route, args) => {
     key: key2,
     fetchMore,
     abort,
+    optimisticUpdate,
     ...extendCache
   };
 };
@@ -1201,7 +1459,7 @@ var isAbortError3 = (error) => {
 var isCancelError = (error) => {
   return isAbortError3(error);
 };
-var shouldRetry = (error) => {
+var shouldRetry2 = (error) => {
   var _a, _b;
   if (isAbortError3(error)) {
     return false;
@@ -1266,39 +1524,355 @@ var combineAbortSignals = (signals) => {
   return controller;
 };
 
-// src/utils/storage.ts
-import { MMKV } from "react-native-mmkv";
-var storage = new MMKV();
-var Storage = class {
-  constructor() {
-    this.setItem = (key2, value) => {
-      try {
-        return storage.set(key2, JSON.stringify(value));
-      } catch (e) {
-      }
-    };
-    this.getItem = (key2) => {
-      try {
-        const value = storage.getString(key2);
-        if (value) {
-          return JSON.parse(value);
-        }
-        return void 0;
-      } catch (e) {
-      }
-    };
-    this.removeItem = (key2) => {
-      try {
-        storage.delete(key2);
-      } catch (e) {
-      }
-    };
-    this.clear = async () => storage.clearAll();
+// src/hooks/utils/debug-logger.ts
+var QueryDebugger = class {
+  constructor(enabled, prefix = "[Query]") {
+    this.enabled = enabled;
+    this.prefix = prefix;
+  }
+  /**
+   * Log a cache hit
+   */
+  logCacheHit(key2, data) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u{1F3AF} Cache HIT`, {
+      key: key2,
+      dataSize: this.getDataSize(data),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (data) {
+      console.log(`${this.prefix} Data:`, data);
+    }
+  }
+  /**
+   * Log a cache miss
+   */
+  logCacheMiss(key2) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u274C Cache MISS`, {
+      key: key2,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log the start of a fetch request
+   */
+  logFetchStart(key2, variables) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u{1F680} Fetching`, {
+      key: key2,
+      variables,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log a successful fetch
+   */
+  logFetchSuccess(key2, duration, data) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u2705 Success`, {
+      key: key2,
+      duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
+      dataSize: this.getDataSize(data),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log a fetch error
+   */
+  logFetchError(key2, error, duration) {
+    if (!this.enabled) return;
+    console.error(`${this.prefix} \u274C Error`, {
+      key: key2,
+      error: (error == null ? void 0 : error.message) || error,
+      duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log cache invalidation
+   */
+  logInvalidate(key2) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u{1F504} Invalidating`, {
+      pattern: key2.toString(),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log network policy decision
+   */
+  logPolicy(key2, policy, decision) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u{1F4CB} Policy`, {
+      key: key2,
+      policy,
+      decision,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log cache expiry check
+   */
+  logCacheExpiry(key2, isExpired, isStale) {
+    if (!this.enabled) return;
+    console.log(`${this.prefix} \u23F0 Cache Status`, {
+      key: key2,
+      expired: isExpired,
+      stale: isStale,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Log request deduplication
+   */
+  logDeduplication(key2, isDuplicate) {
+    if (!this.enabled) return;
+    if (isDuplicate) {
+      console.log(`${this.prefix} \u{1F517} Request Deduplicated`, {
+        key: key2,
+        message: "Using existing in-flight request",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+  }
+  /**
+   * Get the size of data (array length or object keys)
+   */
+  getDataSize(data) {
+    if (!data) return "0";
+    if (Array.isArray(data)) return `${data.length} items`;
+    if (typeof data === "object") return `${Object.keys(data).length} keys`;
+    return "scalar";
   }
 };
-var storage_default = new Storage();
+var globalDebugEnabled = false;
+function enableGlobalDebug() {
+  globalDebugEnabled = true;
+}
+function disableGlobalDebug() {
+  globalDebugEnabled = false;
+}
+function isGlobalDebugEnabled() {
+  return globalDebugEnabled;
+}
+function createDebugger(enabled, prefix) {
+  return new QueryDebugger(enabled != null ? enabled : globalDebugEnabled, prefix);
+}
+
+// src/hooks/utils/retry-manager.ts
+async function retryWithBackoff(fn, options) {
+  const { retries, delay, condition, maxDelay = 3e4 } = options;
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (condition && !condition(error)) {
+        throw error;
+      }
+      if (!shouldRetry(error)) {
+        throw error;
+      }
+      if (attempt === retries) {
+        throw error;
+      }
+      const waitTime = calculateDelay(delay, attempt, maxDelay);
+      await sleep(waitTime);
+    }
+  }
+  throw lastError;
+}
+function calculateDelay(delay, attempt, maxDelay) {
+  if (delay === "exponential") {
+    return Math.min(1e3 * Math.pow(2, attempt), maxDelay);
+  }
+  return delay;
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function retryWithJitter(fn, options) {
+  const { jitter = 0.1, ...retryOptions } = options;
+  return retryWithBackoff(fn, {
+    ...retryOptions,
+    delay: typeof retryOptions.delay === "number" ? addJitter(retryOptions.delay, jitter) : retryOptions.delay
+  });
+}
+function addJitter(delay, jitterFactor) {
+  const jitter = delay * jitterFactor * Math.random();
+  return delay + jitter;
+}
+
+// src/hooks/utils/offline-queue.ts
+import uuid2 from "react-native-uuid";
+var storage2;
+try {
+  storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
+} catch (e) {
+  storage2 = {
+    set: () => {
+    },
+    getString: () => void 0
+  };
+}
+var STORAGE_KEY = "offline_mutation_queue";
+var DEFAULT_MAX_RETRIES = 3;
+var OfflineQueue = class {
+  constructor() {
+    this.queue = [];
+    this.isProcessing = false;
+    this.loadFromStorage();
+  }
+  /**
+   * Adds a mutation to the queue
+   */
+  async enqueue(mutation) {
+    const item = {
+      ...mutation,
+      id: uuid2.v4(),
+      timestamp: Date.now(),
+      retries: 0,
+      maxRetries: DEFAULT_MAX_RETRIES
+    };
+    this.queue.push(item);
+    await this.persist();
+    return item.id;
+  }
+  /**
+   * Processes the queue
+   */
+  async processQueue(onProcess) {
+    if (this.isProcessing || this.queue.length === 0) {
+      return;
+    }
+    this.isProcessing = true;
+    while (this.queue.length > 0) {
+      const item = this.queue[0];
+      try {
+        await onProcess(item);
+        this.queue.shift();
+        await this.persist();
+      } catch (error) {
+        item.retries++;
+        if (item.retries >= item.maxRetries) {
+          console.warn(`[OfflineQueue] Giving up on mutation ${item.id} after ${item.retries} retries`);
+          this.queue.shift();
+          await this.persist();
+        } else {
+          break;
+        }
+      }
+    }
+    this.isProcessing = false;
+  }
+  /**
+   * Gets the current queue
+   */
+  getQueue() {
+    return [...this.queue];
+  }
+  /**
+   * Gets the queue size
+   */
+  size() {
+    return this.queue.length;
+  }
+  /**
+   * Clears the entire queue
+   */
+  async clear() {
+    this.queue = [];
+    await this.persist();
+  }
+  /**
+   * Removes a specific mutation from the queue
+   */
+  async remove(id) {
+    const index = this.queue.findIndex((item) => item.id === id);
+    if (index > -1) {
+      this.queue.splice(index, 1);
+      await this.persist();
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Persists queue to storage
+   */
+  async persist() {
+    try {
+      storage2.set(STORAGE_KEY, JSON.stringify(this.queue));
+    } catch (error) {
+      console.error("[OfflineQueue] Failed to persist queue:", error);
+    }
+  }
+  /**
+   * Loads queue from storage
+   */
+  loadFromStorage() {
+    try {
+      const stored = storage2.getString(STORAGE_KEY);
+      if (stored) {
+        this.queue = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error("[OfflineQueue] Failed to load queue:", error);
+      this.queue = [];
+    }
+  }
+};
+var queueInstance = null;
+function getOfflineQueue() {
+  if (!queueInstance) {
+    queueInstance = new OfflineQueue();
+  }
+  return queueInstance;
+}
+
+// src/hooks/utils/refetch-manager.ts
+import { useEffect as useEffect6, useRef as useRef5 } from "react";
+import { AppState as AppState2 } from "react-native";
+function useRefetchOnFocus(enabled, refetch) {
+  const appState = useRef5(AppState2.currentState);
+  useEffect6(() => {
+    if (!enabled) return;
+    const subscription = AppState2.addEventListener("change", (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+        refetch();
+      }
+      appState.current = nextAppState;
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [enabled, refetch]);
+}
+function useRefetchOnReconnect(enabled, refetch) {
+  const { connected } = useSocket();
+  const prevConnected = useRef5(connected);
+  useEffect6(() => {
+    if (enabled && connected && !prevConnected.current) {
+      refetch();
+    }
+    prevConnected.current = connected;
+  }, [connected, enabled, refetch]);
+}
+function useRefetchInterval(enabled, refetch, interval) {
+  useEffect6(() => {
+    if (!enabled || interval <= 0) return;
+    const timer = setInterval(() => {
+      refetch();
+    }, interval);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [enabled, refetch, interval]);
+}
 
 // src/store/index.ts
+init_storage();
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 var saveToLocalStorage = (state) => {
   try {
@@ -1356,32 +1930,62 @@ var decrypt = (response) => {
 };
 
 // src/index.ts
+init_storage();
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 export {
   app_context_default as AppProvider,
+  DEFAULT_CACHE_TTL,
+  DEFAULT_STALE_TIME,
+  ERROR_MESSAGES,
+  MAX_CACHE_SIZE,
+  NETWORK_TIMEOUT,
+  OfflineQueue,
   paths_default as PATHS,
+  QueryDebugger,
+  STATUS_CODES,
   config as alphaConfig,
+  canUseCache,
+  cancelRequest,
+  clearAllRequests,
   combineAbortSignals,
   createAbortController,
+  createCacheEntry,
+  createDebugger,
   createErrorResponse,
   createSuccessResponse,
   createTimeoutController,
   dayjs,
   decrypt,
+  disableGlobalDebug,
+  enableGlobalDebug,
   encrypt,
   extractErrorMessage,
   formatFormData2 as formatFormData,
   money_default as formatMoney,
   formatUrlEncoded2 as formatUrlEncoded,
+  getCacheAge,
+  getCacheData,
+  getCacheMetadata,
+  getInFlightCount,
+  getOfflineQueue,
+  getOrCreateRequest,
   isAbortError3 as isAbortError,
   isAuthError,
+  isCacheExpired,
+  isCacheFresh,
+  isCacheStale,
   isCancelError,
+  isGlobalDebugEnabled,
   isAbortError as isHttpAbortError,
+  isRequestInFlight,
   isSuccessStatus,
+  retryWithBackoff,
+  retryWithJitter,
   safeAbort,
-  shouldRetry,
+  setMaxCacheSize,
+  shouldRetry2 as shouldRetry,
   storage_default as storage,
   store,
   useApp,
@@ -1391,6 +1995,9 @@ export {
   use_mutation_async_default as useMutationAsync,
   use_query_default as useQuery,
   use_query_async_default as useQueryAsync,
+  useRefetchInterval,
+  useRefetchOnFocus,
+  useRefetchOnReconnect,
   use_selector_default as useSelector
 };
 //# sourceMappingURL=index.mjs.map
