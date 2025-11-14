@@ -11,9 +11,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key2 of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key2) && key2 !== except)
-        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
   }
   return to;
 };
@@ -31,15 +31,15 @@ var init_storage = __esm({
     storage = new MMKV();
     Storage = class {
       constructor() {
-        this.setItem = (key2, value) => {
+        this.setItem = (key, value) => {
           try {
-            return storage.set(key2, JSON.stringify(value));
+            return storage.set(key, JSON.stringify(value));
           } catch (e) {
           }
         };
-        this.getItem = (key2) => {
+        this.getItem = (key) => {
           try {
-            const value = storage.getString(key2);
+            const value = storage.getString(key);
             if (value) {
               return JSON.parse(value);
             }
@@ -47,9 +47,9 @@ var init_storage = __esm({
           } catch (e) {
           }
         };
-        this.removeItem = (key2) => {
+        this.removeItem = (key) => {
           try {
-            storage.delete(key2);
+            storage.delete(key);
           } catch (e) {
           }
         };
@@ -87,6 +87,8 @@ var DEFAULT_CONFIG = {
     count: 3,
     delay: "exponential"
   },
+  encryption: void 0,
+  // No default - must be provided for security
   debug: false
 };
 var naira = "\u20A6";
@@ -145,8 +147,8 @@ var formatUrlEncoded = (data) => {
 };
 var formatFormData = (data) => {
   const formData = new FormData();
-  for (const key2 in data) {
-    formData.append(key2, data[key2]);
+  for (const key in data) {
+    formData.append(key, data[key]);
   }
   return formData;
 };
@@ -246,17 +248,112 @@ var isAbortError = (error) => {
   return axios.isCancel(error) || error.name === "AbortError" || error.name === "CanceledError";
 };
 
-// src/store/reducers/cache-reducer.tsx
+// src/store/contexts/app-context.tsx
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import NetInfo from "@react-native-community/netinfo";
+
+// src/hooks/use-selector.tsx
+import { useSelector as Selector } from "react-redux";
+var useSelector = Selector;
+var use_selector_default = useSelector;
+
+// src/hooks/use-dispatch.tsx
+import { useDispatch } from "react-redux";
+var use_dispatch_default = () => useDispatch();
+
+// src/store/reducers/app-reducer.tsx
 import { createSlice } from "@reduxjs/toolkit";
+var initialState = {
+  auth: {
+    accessToken: "",
+    refreshToken: "",
+    customerId: void 0
+  },
+  user: null
+};
+var appSlice = createSlice({
+  name: "app",
+  initialState,
+  reducers: {
+    /**
+     * Set auth tokens and customer ID
+     * Accepts partial updates to merge with existing auth state
+     */
+    setAuth(state, action) {
+      state.auth = { ...state.auth, ...action.payload };
+    },
+    /**
+     * Set user data
+     * Apps define their own user structure
+     */
+    setUser(state, action) {
+      state.user = action.payload;
+    },
+    /**
+     * Clear authentication state
+     * Resets both auth and user to initial values
+     */
+    clearAuth(state) {
+      state.auth = initialState.auth;
+      state.user = null;
+    }
+  }
+});
+var actions = appSlice.actions;
+var app_reducer_default = appSlice.reducer;
+
+// src/store/contexts/app-context.tsx
+import { jsx } from "react/jsx-runtime";
+var AppContext = createContext(void 0);
+var useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useApp must be used within AppProvider");
+  }
+  return context;
+};
+var AppProvider = ({ children }) => {
+  const state = use_selector_default((appState) => appState.app);
+  const dispatch = use_dispatch_default();
+  const [connected, setConnected] = useState(false);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((internetState) => {
+      setConnected(!!internetState.isInternetReachable);
+    });
+    return () => unsubscribe();
+  }, []);
+  const value = useMemo(
+    () => ({
+      auth: state.auth,
+      user: state.user,
+      connected,
+      setAuth: (payload) => dispatch(actions.setAuth(payload)),
+      setUser: (payload) => dispatch(actions.setUser(payload)),
+      clearAuth: () => dispatch(actions.clearAuth())
+    }),
+    [state.auth, state.user, connected, dispatch]
+  );
+  return /* @__PURE__ */ jsx(AppContext.Provider, { value, children });
+};
+var app_context_default = AppProvider;
+
+// src/store/reducers/cache-reducer.tsx
+import { createSlice as createSlice2 } from "@reduxjs/toolkit";
 var metadata = {
   accessOrder: [],
   maxSize: 100
   // Default LRU limit
 };
-var initialState = {};
-var cacheSlice = createSlice({
+var initialState2 = {};
+var cacheSlice = createSlice2({
   name: "cache",
-  initialState,
+  initialState: initialState2,
   reducers: {
     init(state, action) {
       state[action.payload.key] = {
@@ -266,15 +363,15 @@ var cacheSlice = createSlice({
     },
     set(state, action) {
       const timestamp = Date.now();
-      const { key: key2, value, ttl, staleTime } = action.payload;
-      updateAccessOrder(state, key2);
+      const { key, value, ttl, staleTime } = action.payload;
+      updateAccessOrder(state, key);
       const entry = {
         data: value,
         timestamp,
         expiresAt: ttl ? timestamp + ttl : void 0,
         staleAt: staleTime !== void 0 ? timestamp + staleTime : void 0
       };
-      state[key2] = entry;
+      state[key] = entry;
     },
     prepend(state, action) {
       const timestamp = (/* @__PURE__ */ new Date()).getTime();
@@ -286,34 +383,34 @@ var cacheSlice = createSlice({
     },
     paginate(state, action) {
       const timestamp = (/* @__PURE__ */ new Date()).getTime();
-      const { key: key2, data, paginationKey } = action.payload;
-      state[key2] = {
+      const { key, data, paginationKey } = action.payload;
+      state[key] = {
         ...data,
-        [paginationKey]: [...state[key2][paginationKey], ...data[paginationKey]],
+        [paginationKey]: [...state[key][paginationKey], ...data[paginationKey]],
         timestamp
       };
     },
     remove(state, action) {
       delete state[action.payload];
     },
-    clear: () => initialState,
+    clear: () => initialState2,
     // New action to delete a specific cache entry
     delete(state, action) {
-      const { key: key2 } = action.payload;
-      delete state[key2];
-      const index = metadata.accessOrder.indexOf(key2);
+      const { key } = action.payload;
+      delete state[key];
+      const index = metadata.accessOrder.indexOf(key);
       if (index > -1) {
         metadata.accessOrder.splice(index, 1);
       }
     }
   }
 });
-function updateAccessOrder(state, key2) {
-  const index = metadata.accessOrder.indexOf(key2);
+function updateAccessOrder(state, key) {
+  const index = metadata.accessOrder.indexOf(key);
   if (index > -1) {
     metadata.accessOrder.splice(index, 1);
   }
-  metadata.accessOrder.push(key2);
+  metadata.accessOrder.push(key);
   if (metadata.accessOrder.length > metadata.maxSize) {
     const evictKey = metadata.accessOrder.shift();
     if (evictKey) {
@@ -327,217 +424,8 @@ function setMaxCacheSize(size) {
 function getCacheMetadata() {
   return { ...metadata };
 }
-var actions = cacheSlice.actions;
+var actions2 = cacheSlice.actions;
 var cache_reducer_default = cacheSlice.reducer;
-
-// src/store/reducers/app-reducer.tsx
-import { createSlice as createSlice2 } from "@reduxjs/toolkit";
-import uuid from "react-native-uuid";
-var initialState2 = {
-  auth: {
-    accessToken: "",
-    customerId: "",
-    user: {}
-  },
-  registered: false,
-  deviceId: uuid.v4(),
-  email: "",
-  image: "",
-  defaultPassword: false,
-  biometric: false,
-  visibility: {
-    wallet: true,
-    savings: true,
-    total: true,
-    investment: true
-  }
-};
-var appSlice = createSlice2({
-  name: "app",
-  initialState: initialState2,
-  reducers: {
-    setDeviceId(state, action) {
-      state.deviceId = action.payload;
-    },
-    setAuth(state, action) {
-      state.auth = {
-        accessToken: action.payload.auth_idtoken,
-        customerId: action.payload.session_token_id,
-        user: {}
-      };
-    },
-    setUser(state, action) {
-      state.auth.user = action.payload;
-    },
-    setEmail(state, action) {
-      state.email = action.payload;
-    },
-    setImage(state, action) {
-      state.image = action.payload;
-    },
-    setRegistered(state, action) {
-      state.registered = action.payload;
-    },
-    setDefaultPassword(state, action) {
-      state.defaultPassword = action.payload;
-    },
-    setBiometric(state, action) {
-      state.biometric = action.payload;
-    },
-    toggleVisibility(state, action) {
-      state.visibility[action.payload] = !state.visibility[action.payload];
-    },
-    setLogout(state) {
-      state.auth = initialState2.auth;
-    }
-  }
-});
-var actions2 = appSlice.actions;
-var app_reducer_default = appSlice.reducer;
-
-// src/store/contexts/app-context.tsx
-import {
-  createContext as createContext2,
-  useContext as useContext2,
-  useEffect as useEffect2,
-  useMemo,
-  useState as useState2
-} from "react";
-import NetInfo2 from "@react-native-community/netinfo";
-
-// src/store/contexts/socket-context.tsx
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState
-} from "react";
-import NetInfo from "@react-native-community/netinfo";
-import { jsx } from "react/jsx-runtime";
-var defaultValue = {};
-var SocketContext = createContext(defaultValue);
-var useSocket = () => useContext(SocketContext);
-var SocketProvider = ({ children }) => {
-  const [connected, setConnected] = useState(false);
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      if (state.isInternetReachable) {
-        setConnected(true);
-      } else {
-        setConnected(false);
-      }
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-  return /* @__PURE__ */ jsx(
-    SocketContext.Provider,
-    {
-      value: {
-        connected
-      },
-      children
-    }
-  );
-};
-var socket_context_default = SocketProvider;
-
-// src/utils/toast.ts
-import SimpleToast from "react-native-simple-toast";
-var Toast = (message, duration) => {
-  setTimeout(() => {
-    SimpleToast.show(message, SimpleToast[duration || "LONG"]);
-  }, 100);
-};
-var toast_default = Toast;
-
-// src/store/contexts/app-context.tsx
-import { useNavigation } from "@react-navigation/native";
-
-// src/hooks/use-selector.tsx
-import { useSelector as Selector } from "react-redux";
-var useSelector = Selector;
-var use_selector_default = useSelector;
-
-// src/hooks/use-dispatch.tsx
-import { useDispatch } from "react-redux";
-var use_dispatch_default = () => useDispatch();
-
-// src/store/contexts/app-context.tsx
-import { jsx as jsx2 } from "react/jsx-runtime";
-var defaultValue2 = {};
-var AppContext = createContext2(defaultValue2);
-var useApp = () => useContext2(AppContext);
-var AppProvider = ({ children }) => {
-  const { reset } = useNavigation();
-  const state = use_selector_default((appstate) => appstate.app);
-  const dispatch = use_dispatch_default();
-  const [connected, setConnected] = useState2(false);
-  useEffect2(() => {
-    const unsubscribe = NetInfo2.addEventListener((internetState) => {
-      if (internetState.isInternetReachable) {
-        setConnected(true);
-      } else {
-        setConnected(false);
-      }
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-  const func = useMemo(
-    () => ({
-      setAuth: (payload) => {
-        dispatch(actions2.setAuth(payload));
-      },
-      setUser: (payload) => {
-        dispatch(actions2.setUser(payload));
-      },
-      setEmail: (payload) => {
-        dispatch(actions2.setEmail(payload));
-      },
-      setImage: (payload) => {
-        dispatch(actions2.setImage(payload));
-      },
-      setRegistered: (payload) => {
-        dispatch(actions2.setRegistered(payload));
-      },
-      setDefaultPassword: (payload) => {
-        dispatch(actions2.setDefaultPassword(payload));
-      },
-      setBiometric: (payload) => {
-        dispatch(actions2.setBiometric(payload));
-      },
-      toggleVisibility: (payload) => {
-        dispatch(actions2.toggleVisibility(payload));
-      },
-      setTimeout: async () => {
-        toast_default("Session expired! kindly login", "SHORT");
-        func.setLogout().catch(() => {
-        });
-      },
-      setLogout: async () => {
-        dispatch(actions2.setLogout());
-        dispatch(actions.clear());
-        reset({
-          index: 0,
-          routes: [
-            // { name: 'welcome' },
-            { name: "login" }
-          ]
-        });
-      }
-    }),
-    [dispatch, reset]
-  );
-  const value = useMemo(
-    () => ({ ...state, connected, ...func }),
-    [state, connected, func]
-  );
-  return /* @__PURE__ */ jsx2(AppContext.Provider, { value, children: /* @__PURE__ */ jsx2(socket_context_default, { children }) });
-};
-var app_context_default = AppProvider;
 
 // src/store/reducers/thread-reducer.tsx
 import { createSlice as createSlice3 } from "@reduxjs/toolkit";
@@ -588,11 +476,11 @@ function parseRoute(route, variables = {}, customerId) {
     delete variablesCopy[paramName];
     return params[paramName] || matched;
   });
-  const key2 = path + JSON.stringify(variablesCopy);
+  const key = path + JSON.stringify(variablesCopy);
   return {
     path,
     method: method || "GET",
-    key: key2,
+    key,
     rawPath
   };
 }
@@ -613,46 +501,46 @@ var useCache = () => {
   );
   const getKey = useCallback(
     (route, variables) => {
-      const { key: key2 } = getContext(route, variables);
-      return key2;
+      const { key } = getContext(route, variables);
+      return key;
     },
     [getContext]
   );
   const getData = useCallback(
-    (key2) => {
-      return cacheState[key2];
+    (key) => {
+      return cacheState[key];
     },
     [cacheState]
   );
   const setCache = useCallback(
-    (key2, value) => {
-      dispatch(actions.set({ key: key2, value }));
+    (key, value) => {
+      dispatch(actions2.set({ key, value }));
     },
     [dispatch]
   );
   const update = useCallback(
-    (key2, value) => {
-      setCache(key2, value);
+    (key, value) => {
+      setCache(key, value);
     },
     [setCache]
   );
   const updateItem = useCallback(
-    (key2, id, value) => {
-      const cache = cacheState[key2];
+    (key, id, value) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
         const index = cache.findIndex((item) => getItemId(item) === id);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...value };
-          setCache(key2, updated);
+          setCache(key, updated);
         }
       }
     },
     [cacheState, setCache]
   );
   const getItem = useCallback(
-    (key2, id) => {
-      const cache = cacheState[key2];
+    (key, id) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
         return cache.find((item) => getItemId(item) === id);
       }
@@ -661,76 +549,76 @@ var useCache = () => {
     [cacheState]
   );
   const updateValue = useCallback(
-    (key2, arg, value) => {
-      const cache = cacheState[key2];
+    (key, arg, value) => {
+      const cache = cacheState[key];
       if (!Array.isArray(cache) && typeof cache === "object") {
-        setCache(key2, { ...cache, [arg]: value });
+        setCache(key, { ...cache, [arg]: value });
       }
     },
     [cacheState, setCache]
   );
   const updateValues = useCallback(
-    (key2, values) => {
-      const cache = cacheState[key2];
+    (key, values) => {
+      const cache = cacheState[key];
       if (!Array.isArray(cache) && typeof cache === "object") {
-        setCache(key2, { ...cache, ...values });
+        setCache(key, { ...cache, ...values });
       }
     },
     [cacheState, setCache]
   );
   const prepend = useCallback(
-    (key2, data) => {
-      const cache = cacheState[key2];
+    (key, data) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        setCache(key2, [data, ...cache]);
+        setCache(key, [data, ...cache]);
       } else {
-        setCache(key2, [data]);
+        setCache(key, [data]);
       }
     },
     [cacheState, setCache]
   );
   const updateOrPrepend = useCallback(
-    (key2, data) => {
-      const cache = cacheState[key2];
+    (key, data) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
         const dataId = getItemId(data);
         const index = cache.findIndex((item) => getItemId(item) === dataId);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...data };
-          setCache(key2, updated);
+          setCache(key, updated);
         } else {
-          setCache(key2, [data, ...cache]);
+          setCache(key, [data, ...cache]);
         }
       } else {
-        setCache(key2, [data]);
+        setCache(key, [data]);
       }
     },
     [cacheState, setCache]
   );
   const append = useCallback(
-    (key2, data) => {
-      const cache = cacheState[key2];
+    (key, data) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        setCache(key2, [...cache, data]);
+        setCache(key, [...cache, data]);
       } else {
-        setCache(key2, [data]);
+        setCache(key, [data]);
       }
     },
     [cacheState, setCache]
   );
   const deleteItem = useCallback(
-    (key2, id) => {
-      const cache = cacheState[key2];
+    (key, id) => {
+      const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        setCache(key2, cache.filter((item) => getItemId(item) !== id));
+        setCache(key, cache.filter((item) => getItemId(item) !== id));
       }
     },
     [cacheState, setCache]
   );
   const invalidate = useCallback(
-    (key2) => {
-      dispatch(actions.delete({ key: key2 }));
+    (key) => {
+      dispatch(actions2.delete({ key }));
     },
     [dispatch]
   );
@@ -740,14 +628,14 @@ var useCache = () => {
       const keysToInvalidate = Object.keys(cacheState).filter(
         (k) => regex.test(k)
       );
-      keysToInvalidate.forEach((key2) => {
-        dispatch(actions.delete({ key: key2 }));
+      keysToInvalidate.forEach((key) => {
+        dispatch(actions2.delete({ key }));
       });
     },
     [cacheState, dispatch]
   );
   const invalidateAll = useCallback(() => {
-    dispatch(actions.clear());
+    dispatch(actions2.clear());
   }, [dispatch]);
   return {
     getItem,
@@ -769,6 +657,19 @@ var useCache = () => {
   };
 };
 var use_cache_default = useCache;
+
+// src/store/contexts/socket-context.tsx
+import {
+  createContext as createContext2,
+  useContext as useContext2,
+  useEffect as useEffect2,
+  useState as useState2
+} from "react";
+import NetInfo2 from "@react-native-community/netinfo";
+import { jsx as jsx2 } from "react/jsx-runtime";
+var defaultValue = {};
+var SocketContext = createContext2(defaultValue);
+var useSocket = () => useContext2(SocketContext);
 
 // src/hooks/constants.ts
 var NETWORK_TIMEOUT = 1e4;
@@ -840,21 +741,21 @@ function shouldRetry(error) {
 
 // src/hooks/utils/request-queue.ts
 var inFlightRequests = /* @__PURE__ */ new Map();
-function getOrCreateRequest(key2, requestFn) {
-  if (inFlightRequests.has(key2)) {
-    return inFlightRequests.get(key2);
+function getOrCreateRequest(key, requestFn) {
+  if (inFlightRequests.has(key)) {
+    return inFlightRequests.get(key);
   }
   const promise = requestFn().finally(() => {
-    inFlightRequests.delete(key2);
+    inFlightRequests.delete(key);
   });
-  inFlightRequests.set(key2, promise);
+  inFlightRequests.set(key, promise);
   return promise;
 }
-function cancelRequest(key2) {
-  inFlightRequests.delete(key2);
+function cancelRequest(key) {
+  inFlightRequests.delete(key);
 }
-function isRequestInFlight(key2) {
-  return inFlightRequests.has(key2);
+function isRequestInFlight(key) {
+  return inFlightRequests.has(key);
 }
 function getInFlightCount() {
   return inFlightRequests.size;
@@ -922,10 +823,10 @@ var useQuery = (route, args) => {
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
-  const { key: key2, path, method } = cache.getContext(route, variables);
+  const { key, path, method } = cache.getContext(route, variables);
   const policy = networkPolicy || "cache-first";
-  const data = use_selector_default((state) => state.cache[key2]);
-  const thread = use_selector_default((state) => state.tread[key2]);
+  const data = use_selector_default((state) => state.cache[key]);
+  const thread = use_selector_default((state) => state.thread[key]);
   const dispatch = use_dispatch_default();
   const { connected } = useSocket();
   const timeoutRef = useRef2(null);
@@ -951,14 +852,14 @@ var useQuery = (route, args) => {
   }, []);
   useEffect3(() => {
     if (init && init.timestamp > ((data == null ? void 0 : data.timestamp) || 0)) {
-      dispatch(actions.init({ key: key2, value: init }));
+      dispatch(actions2.init({ key, value: init }));
     }
-  }, [init == null ? void 0 : init.timestamp, key2, dispatch, data == null ? void 0 : data.timestamp]);
+  }, [init == null ? void 0 : init.timestamp, key, dispatch, data == null ? void 0 : data.timestamp]);
   const setThread = useCallback2(
     (loading, error) => {
       dispatch(
         actions3.set({
-          key: key2,
+          key,
           value: {
             loading,
             error
@@ -966,7 +867,7 @@ var useQuery = (route, args) => {
         })
       );
     },
-    [dispatch, key2]
+    [dispatch, key]
   );
   const fetchData = useCallback2(
     (fetchVariables) => {
@@ -1018,7 +919,7 @@ var useQuery = (route, args) => {
           abortControllerRef.current = new AbortController();
           setThread(true);
           const res = await getOrCreateRequest(
-            key2,
+            key,
             () => service_default(
               path,
               method || "GET",
@@ -1036,10 +937,9 @@ var useQuery = (route, args) => {
             if (onCompleted) {
               onCompleted(res.data.data);
             }
-            cache.setCache(key2, res.data.data);
+            cache.setCache(key, res.data.data);
           } else if (isAuthError(res.status)) {
-            app.setTimeout().catch(() => {
-            });
+            app.clearAuth();
           } else if (error && onError) {
             onError(error, res.status);
           }
@@ -1055,7 +955,7 @@ var useQuery = (route, args) => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key2, app]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
   );
   const refetch = useCallback2(
     (refetchVariables) => {
@@ -1081,13 +981,13 @@ var useQuery = (route, args) => {
         const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
         if (isSuccessStatus(res.status)) {
           if (concat === "start") {
-            dispatch(actions.prepend({ key: key2, value: res.data.data }));
+            dispatch(actions2.prepend({ key, value: res.data.data }));
           } else if (concat === "end") {
-            dispatch(actions.append({ key: key2, value: res.data.data }));
+            dispatch(actions2.append({ key, value: res.data.data }));
           } else if (concat === "pagination") {
             dispatch(
-              actions.paginate({
-                key: key2,
+              actions2.paginate({
+                key,
                 data: res.data.data,
                 paginationKey: paginationKey || "data"
               })
@@ -1095,8 +995,7 @@ var useQuery = (route, args) => {
           }
           return { data: res.data.data };
         } else if (isAuthError(res.status)) {
-          app.setTimeout().catch(() => {
-          });
+          app.clearAuth();
           return { error };
         }
         return { error };
@@ -1108,62 +1007,62 @@ var useQuery = (route, args) => {
         return { error };
       }
     },
-    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key2, app]
+    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app]
   );
   const abort = useCallback2(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    cancelRequest(key2);
-  }, [key2]);
+    cancelRequest(key);
+  }, [key]);
   const optimisticUpdate = useCallback2(
     (updater, rollback) => {
       const currentData = data;
       const newData = updater(currentData);
-      cache.update(key2, newData);
+      cache.update(key, newData);
       return () => {
         if (rollback) {
           rollback();
         } else {
-          cache.update(key2, currentData);
+          cache.update(key, currentData);
         }
       };
     },
-    [data, key2, cache]
+    [data, key, cache]
   );
   const extendCache = useMemo2(
     () => ({
       update: (newData) => {
-        cache.update(key2, newData);
+        cache.update(key, newData);
       },
       updateValue: (arg, value) => {
-        cache.updateValue(key2, arg, value);
+        cache.updateValue(key, arg, value);
       },
       updateValues: (values) => {
-        cache.updateValues(key2, values);
+        cache.updateValues(key, values);
       },
       updateItem: (id, value) => {
-        cache.updateItem(key2, id, value);
+        cache.updateItem(key, id, value);
       },
       deleteItem: (id) => {
-        cache.deleteItem(key2, id);
+        cache.deleteItem(key, id);
       },
       prepend: (newData) => {
-        cache.prepend(key2, newData);
+        cache.prepend(key, newData);
       },
       append: (newData) => {
-        cache.append(key2, newData);
+        cache.append(key, newData);
       }
     }),
-    [key2, cache]
+    [key, cache]
   );
   return {
     data: data || init,
     loading: (thread == null ? void 0 : thread.loading) || false,
     error: thread == null ? void 0 : thread.error,
     refetch,
-    key: key2,
+    key,
     fetchMore,
     abort,
     optimisticUpdate,
@@ -1179,12 +1078,12 @@ var useQueryAsync = () => {
   const { getContext } = use_cache_default();
   const dispatch = use_dispatch_default();
   return async (route, variables = {}, options) => {
-    const { key: key2, method, path } = getContext(route, variables);
+    const { key, method, path } = getContext(route, variables);
     const opts = typeof options === "string" ? { authToken: options } : options || {};
     try {
       dispatch(
         actions3.set({
-          key: key2,
+          key,
           value: {
             loading: true,
             error: void 0
@@ -1204,7 +1103,7 @@ var useQueryAsync = () => {
       const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
       dispatch(
         actions3.set({
-          key: key2,
+          key,
           value: {
             loading: false,
             error
@@ -1212,11 +1111,10 @@ var useQueryAsync = () => {
         })
       );
       if (isSuccessStatus(res.status)) {
-        dispatch(actions.set({ key: key2, value: res.data.data }));
+        dispatch(actions2.set({ key, value: res.data.data }));
         return createSuccessResponse(res.data.data, res.status);
       } else if (isAuthError(res.status)) {
-        app.setTimeout().catch(() => {
-        });
+        app.clearAuth();
         return createErrorResponse(error || "Unauthorized", res.status);
       }
       return createErrorResponse(error || "Request failed", res.status);
@@ -1224,7 +1122,7 @@ var useQueryAsync = () => {
       if (isAbortError2(e)) {
         dispatch(
           actions3.set({
-            key: key2,
+            key,
             value: {
               loading: false,
               error: void 0
@@ -1236,7 +1134,7 @@ var useQueryAsync = () => {
       const error = e.message || "Oops! an error occurred";
       dispatch(
         actions3.set({
-          key: key2,
+          key,
           value: {
             loading: false,
             error
@@ -1300,7 +1198,7 @@ var useMutation = (route, option) => {
         let errorMessage = extractErrorMessage(res);
         if (rawPath.includes(":customerId") && isAuthError(res.status)) {
           errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
-          await app.setTimeout();
+          app.clearAuth();
         }
         setError(errorMessage);
         setLoading(false);
@@ -1390,7 +1288,7 @@ var useMutationAsync = (route, option) => {
           return createSuccessResponse(responseData, res.status);
         }
         if (isAuthError(res.status)) {
-          await app.setTimeout();
+          app.clearAuth();
         }
         const errorMessage = extractErrorMessage(res);
         setError(errorMessage);
@@ -1451,11 +1349,11 @@ var shouldRetry2 = (error) => {
 };
 var formatFormData2 = (data) => {
   const formData = new FormData();
-  for (const key2 in data) {
-    if (data.hasOwnProperty(key2)) {
-      const value = data[key2];
+  for (const key in data) {
+    if (data.hasOwnProperty(key)) {
+      const value = data[key];
       if (value !== null && value !== void 0) {
-        formData.append(key2, value);
+        formData.append(key, value);
       }
     }
   }
@@ -1513,10 +1411,10 @@ var QueryDebugger = class {
   /**
    * Log a cache hit
    */
-  logCacheHit(key2, data) {
+  logCacheHit(key, data) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u{1F3AF} Cache HIT`, {
-      key: key2,
+      key,
       dataSize: this.getDataSize(data),
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -1527,20 +1425,20 @@ var QueryDebugger = class {
   /**
    * Log a cache miss
    */
-  logCacheMiss(key2) {
+  logCacheMiss(key) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u274C Cache MISS`, {
-      key: key2,
+      key,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
   /**
    * Log the start of a fetch request
    */
-  logFetchStart(key2, variables) {
+  logFetchStart(key, variables) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u{1F680} Fetching`, {
-      key: key2,
+      key,
       variables,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -1548,10 +1446,10 @@ var QueryDebugger = class {
   /**
    * Log a successful fetch
    */
-  logFetchSuccess(key2, duration, data) {
+  logFetchSuccess(key, duration, data) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u2705 Success`, {
-      key: key2,
+      key,
       duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
       dataSize: this.getDataSize(data),
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1560,10 +1458,10 @@ var QueryDebugger = class {
   /**
    * Log a fetch error
    */
-  logFetchError(key2, error, duration) {
+  logFetchError(key, error, duration) {
     if (!this.enabled) return;
     console.error(`${this.prefix} \u274C Error`, {
-      key: key2,
+      key,
       error: (error == null ? void 0 : error.message) || error,
       duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1572,20 +1470,20 @@ var QueryDebugger = class {
   /**
    * Log cache invalidation
    */
-  logInvalidate(key2) {
+  logInvalidate(key) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u{1F504} Invalidating`, {
-      pattern: key2.toString(),
+      pattern: key.toString(),
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
   /**
    * Log network policy decision
    */
-  logPolicy(key2, policy, decision) {
+  logPolicy(key, policy, decision) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u{1F4CB} Policy`, {
-      key: key2,
+      key,
       policy,
       decision,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1594,10 +1492,10 @@ var QueryDebugger = class {
   /**
    * Log cache expiry check
    */
-  logCacheExpiry(key2, isExpired, isStale) {
+  logCacheExpiry(key, isExpired, isStale) {
     if (!this.enabled) return;
     console.log(`${this.prefix} \u23F0 Cache Status`, {
-      key: key2,
+      key,
       expired: isExpired,
       stale: isStale,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1606,11 +1504,11 @@ var QueryDebugger = class {
   /**
    * Log request deduplication
    */
-  logDeduplication(key2, isDuplicate) {
+  logDeduplication(key, isDuplicate) {
     if (!this.enabled) return;
     if (isDuplicate) {
       console.log(`${this.prefix} \u{1F517} Request Deduplicated`, {
-        key: key2,
+        key,
         message: "Using existing in-flight request",
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       });
@@ -1686,7 +1584,7 @@ function addJitter(delay, jitterFactor) {
 }
 
 // src/hooks/utils/offline-queue.ts
-import uuid2 from "react-native-uuid";
+import uuid from "react-native-uuid";
 var storage2;
 try {
   storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
@@ -1711,7 +1609,7 @@ var OfflineQueue = class {
   async enqueue(mutation) {
     const item = {
       ...mutation,
-      id: uuid2.v4(),
+      id: uuid.v4(),
       timestamp: Date.now(),
       retries: 0,
       maxRetries: DEFAULT_MAX_RETRIES
@@ -1813,12 +1711,12 @@ function getOfflineQueue() {
 
 // src/hooks/utils/refetch-manager.ts
 import { useEffect as useEffect6, useRef as useRef5 } from "react";
-import { AppState as AppState2 } from "react-native";
+import { AppState } from "react-native";
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = useRef5(AppState2.currentState);
+  const appState = useRef5(AppState.currentState);
   useEffect6(() => {
     if (!enabled) return;
-    const subscription = AppState2.addEventListener("change", (nextAppState) => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === "active") {
         refetch();
       }
@@ -1852,44 +1750,8 @@ function useRefetchInterval(enabled, refetch, interval) {
 }
 
 // src/store/contexts/alpha-provider.tsx
+import { useMemo as useMemo4, useEffect as useEffect8 } from "react";
 import { Provider } from "react-redux";
-
-// src/store/index.ts
-init_storage();
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
-var saveToLocalStorage = (state) => {
-  try {
-    storage_default.setItem("_state", state);
-  } catch (e) {
-    console.log(e);
-  }
-};
-var loadFromLocalStorage = () => {
-  try {
-    const serializedState = storage_default.getItem("_state");
-    if (serializedState === null) return void 0;
-    return serializedState;
-  } catch (e) {
-    return void 0;
-  }
-};
-var preloadedState = loadFromLocalStorage();
-var rootReducer = combineReducers({
-  app: app_reducer_default,
-  cache: cache_reducer_default,
-  tread: thread_reducer_default
-});
-var store = configureStore({
-  reducer: rootReducer,
-  preloadedState,
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-    immutableCheck: false,
-    serializableCheck: false
-  })
-});
-store.subscribe(() => {
-  saveToLocalStorage(store.getState());
-});
 
 // src/store/contexts/config-context.tsx
 import { createContext as createContext3, useContext as useContext3, useMemo as useMemo3, useEffect as useEffect7 } from "react";
@@ -1940,11 +1802,178 @@ function useAlphaConfig() {
 }
 var config_context_default = ConfigProvider;
 
+// src/store/create-store.ts
+init_storage();
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+var saveToLocalStorage = (state, key) => {
+  try {
+    storage_default.setItem(key, state);
+  } catch (e) {
+    console.error("[AlphaStore] Failed to save state:", e);
+  }
+};
+var loadFromLocalStorage = (key) => {
+  try {
+    const serializedState = storage_default.getItem(key);
+    if (serializedState === null) return void 0;
+    return serializedState;
+  } catch (e) {
+    console.warn("[AlphaStore] Failed to load state:", e);
+    return void 0;
+  }
+};
+function createAlphaStore(customReducers, options = {}) {
+  const {
+    persist = true,
+    storageKey = "_alpha_state"
+  } = options;
+  const rootReducer = combineReducers({
+    // Core reducers (always included)
+    cache: cache_reducer_default,
+    thread: thread_reducer_default,
+    app: app_reducer_default,
+    // Custom app reducers
+    ...customReducers
+  });
+  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
+  const store = configureStore({
+    reducer: rootReducer,
+    // Type assertion needed for dynamic reducer combination
+    preloadedState,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+      immutableCheck: false,
+      serializableCheck: false
+      // Allow non-serializable values
+    })
+  });
+  if (persist) {
+    store.subscribe(() => {
+      saveToLocalStorage(store.getState(), storageKey);
+    });
+  }
+  return store;
+}
+var defaultStore = createAlphaStore();
+
+// src/utils/crypto.ts
+import CryptoJS from "react-native-crypto-js";
+var DEFAULT_CONFIG2 = {
+  key: "2vn!H3KXgX-TxvkD",
+  // Default for development
+  iv: "%x%97Uw@*A2xWaUJ"
+  // Default for development
+};
+var currentConfig2 = { ...DEFAULT_CONFIG2 };
+var hasWarnedAboutDefaultKeys = false;
+function setEncryptionConfig(config2) {
+  if (config2.key !== void 0 || config2.iv !== void 0) {
+    currentConfig2 = { ...currentConfig2, ...config2 };
+    hasWarnedAboutDefaultKeys = false;
+  }
+}
+function getEncryptionConfig() {
+  return { ...currentConfig2 };
+}
+function isValidEncryptionConfig(config2) {
+  if (!config2.key || !config2.iv) {
+    console.error("[rn-alpha-hooks] Encryption config must have both key and iv");
+    return false;
+  }
+  if (config2.key.length !== 16) {
+    console.error("[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128");
+    return false;
+  }
+  if (config2.iv.length !== 16) {
+    console.error("[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters");
+    return false;
+  }
+  return true;
+}
+function generateEncryptionConfig() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+  const generateRandomString = (length) => {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+  return {
+    key: generateRandomString(16),
+    iv: generateRandomString(16)
+  };
+}
+function encrypt(payload, customKey, customIv) {
+  const keyStr = customKey || currentConfig2.key;
+  const ivStr = customIv || currentConfig2.iv;
+  if (typeof __DEV__ !== "undefined" && __DEV__ && keyStr === DEFAULT_CONFIG2.key && !hasWarnedAboutDefaultKeys) {
+    console.warn(
+      "[rn-alpha-hooks] \u26A0\uFE0F Using default encryption keys! Set custom keys via AlphaProvider config.encryption or setEncryptionConfig() for production."
+    );
+    hasWarnedAboutDefaultKeys = true;
+  }
+  const key = CryptoJS.enc.Utf8.parse(keyStr);
+  const iv = CryptoJS.enc.Utf8.parse(ivStr);
+  return CryptoJS.AES.encrypt(payload, key, {
+    iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7
+  }).toString();
+}
+function decrypt(response, customKey, customIv) {
+  const keyStr = customKey || currentConfig2.key;
+  const ivStr = customIv || currentConfig2.iv;
+  const key = CryptoJS.enc.Utf8.parse(keyStr);
+  const iv = CryptoJS.enc.Utf8.parse(ivStr);
+  const decrypted_response = CryptoJS.AES.decrypt(
+    { ciphertext: CryptoJS.enc.Base64.parse(response) },
+    key,
+    { iv }
+  );
+  return decrypted_response.toString(CryptoJS.enc.Utf8);
+}
+
 // src/store/contexts/alpha-provider.tsx
 import { jsx as jsx4 } from "react/jsx-runtime";
-var AlphaProvider = ({ children, config: config2 }) => {
+var AlphaProvider = ({
+  children,
+  config: config2,
+  customReducers,
+  store: customStore,
+  storeOptions
+}) => {
+  const store = useMemo4(() => {
+    if (customStore) return customStore;
+    if (customReducers) return createAlphaStore(customReducers, storeOptions);
+    return defaultStore;
+  }, [customStore, customReducers, storeOptions]);
+  useEffect8(() => {
+    var _a;
+    setHttpConfig(config2);
+    if ((_a = config2.cache) == null ? void 0 : _a.maxSize) {
+      setMaxCacheSize(config2.cache.maxSize);
+    }
+    if (config2.encryption) {
+      setEncryptionConfig(config2.encryption);
+    }
+  }, [config2]);
   return /* @__PURE__ */ jsx4(Provider, { store, children: /* @__PURE__ */ jsx4(config_context_default, { config: config2, children: /* @__PURE__ */ jsx4(app_context_default, { children }) }) });
 };
+
+// src/store/type-helpers.ts
+import { useSelector as useReduxSelector, useDispatch as useReduxDispatch } from "react-redux";
+import { createSlice as createSlice4 } from "@reduxjs/toolkit";
+function createTypedSelector() {
+  return useReduxSelector;
+}
+function createTypedDispatch() {
+  return useReduxDispatch;
+}
+function createSelector(selector) {
+  return selector;
+}
+var useAppSelector = useReduxSelector;
+var useAppDispatch = () => useReduxDispatch();
 
 // src/utils/money.ts
 function money(num, decimal) {
@@ -1954,18 +1983,6 @@ function money(num, decimal) {
   return "-.--";
 }
 var money_default = money;
-
-// src/utils/crypto.ts
-import CryptoJS from "react-native-crypto-js";
-var key = CryptoJS.enc.Utf8.parse("2vn!H3KXgX-TxvkD");
-var iv = CryptoJS.enc.Utf8.parse("%x%97Uw@*A2xWaUJ");
-var encrypt = (payload) => {
-  return CryptoJS.AES.encrypt(payload, key, { iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString();
-};
-var decrypt = (response) => {
-  const decrypted_response = CryptoJS.AES.decrypt({ ciphertext: CryptoJS.enc.Base64.parse(response) }, key, { iv });
-  return decrypted_response.toString(CryptoJS.enc.Utf8);
-};
 
 // src/index.ts
 init_storage();
@@ -1986,18 +2003,25 @@ export {
   QueryDebugger,
   STATUS_CODES,
   config as alphaConfig,
+  actions as appActions,
   canUseCache,
   cancelRequest,
   clearAllRequests,
   combineAbortSignals,
   createAbortController,
+  createAlphaStore,
   createCacheEntry,
   createDebugger,
   createErrorResponse,
+  createSelector,
+  createSlice4 as createSlice,
   createSuccessResponse,
   createTimeoutController,
+  createTypedDispatch,
+  createTypedSelector,
   dayjs,
   decrypt,
+  defaultStore,
   disableGlobalDebug,
   enableGlobalDebug,
   encrypt,
@@ -2005,9 +2029,11 @@ export {
   formatFormData2 as formatFormData,
   money_default as formatMoney,
   formatUrlEncoded2 as formatUrlEncoded,
+  generateEncryptionConfig,
   getCacheAge,
   getCacheData,
   getCacheMetadata,
+  getEncryptionConfig,
   getHttpConfig,
   getInFlightCount,
   getOfflineQueue,
@@ -2022,17 +2048,21 @@ export {
   isAbortError as isHttpAbortError,
   isRequestInFlight,
   isSuccessStatus,
+  isValidEncryptionConfig,
   naira,
   retryWithBackoff,
   retryWithJitter,
   safeAbort,
+  setEncryptionConfig,
   setHttpConfig,
   setMaxCacheSize,
   shouldRetry2 as shouldRetry,
   storage_default as storage,
-  store,
+  defaultStore as store,
   useAlphaConfig,
   useApp,
+  useAppDispatch,
+  useAppSelector,
   use_cache_default as useCache,
   use_dispatch_default as useDispatch,
   use_mutation_default as useMutation,

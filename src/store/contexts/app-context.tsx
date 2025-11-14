@@ -1,6 +1,3 @@
-import * as cache from '../reducers/cache-reducer';
-
-import {AppState, actions} from '../reducers/app-reducer';
 import React, {
   createContext,
   useContext,
@@ -8,106 +5,93 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-
 import NetInfo from '@react-native-community/netinfo';
-import SocketContext from './socket-context';
-import Toast from '../../utils/toast';
-import {Visibility} from 'types';
-import {useNavigation} from '@react-navigation/native';
-import useSelector from "hooks/use-selector";
-import useDispatch from "hooks/use-dispatch";
+import useSelector from '../../hooks/use-selector';
+import useDispatch from '../../hooks/use-dispatch';
+import { actions, CoreAppState } from '../reducers/app-reducer';
 
-interface Props extends AppState {
-  setEmail: (payload: string) => void;
-  setImage: (payload: string) => void;
-  setRegistered: (payload: boolean) => void;
-  setUser: (payload: any) => void;
-  setAuth: (payload: any) => void;
-  setLogout: () => Promise<void>;
-  setTimeout: () => Promise<void>;
-  setDefaultPassword: (value: boolean) => void;
-  setBiometric: (value: boolean) => void;
-  toggleVisibility: (value: Visibility) => void;
+/**
+ * Core app context type
+ * Apps can extend this with their own methods by creating a custom context
+ */
+export interface AppContextValue {
+  // Core state
+  auth: CoreAppState['auth'];
+  user: any;
   connected: boolean;
+  
+  // Core actions
+  setAuth: (payload: Partial<CoreAppState['auth']>) => void;
+  setUser: (payload: any) => void;
+  clearAuth: () => void;
 }
 
-const defaultValue: any = {};
+const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-const AppContext = createContext<Props>(defaultValue);
-export const useApp = () => useContext(AppContext);
+/**
+ * Hook to access app context
+ * Can be typed for custom extensions: useApp<MyAppContextType>()
+ */
+export const useApp = <T = AppContextValue>(): T => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+  return context as unknown as T;
+};
 
-const AppProvider: React.FC<any> = ({children}) => {
-  const {reset} = useNavigation<any>();
-  const state = useSelector(appstate => appstate.app);
+/**
+ * Minimal app provider with core functionality only
+ * Apps can wrap this or create their own context for additional state
+ * 
+ * @example
+ * // Basic usage
+ * <AppProvider>
+ *   <App />
+ * </AppProvider>
+ * 
+ * @example
+ * // Extended usage in your app
+ * function MyAppProvider({ children }) {
+ *   const coreApp = useApp();
+ *   const customState = useSelector(state => state.myCustom);
+ *   
+ *   return (
+ *     <MyContext.Provider value={{ ...coreApp, ...customState }}>
+ *       {children}
+ *     </MyContext.Provider>
+ *   );
+ * }
+ */
+const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const state = useSelector((appState) => appState.app);
   const dispatch = useDispatch();
   const [connected, setConnected] = useState(false);
 
+  // Network connectivity monitoring
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(internetState => {
-      if (internetState.isInternetReachable) {
-        setConnected(true);
-      } else {
-        setConnected(false);
-      }
+    const unsubscribe = NetInfo.addEventListener((internetState) => {
+      setConnected(!!internetState.isInternetReachable);
     });
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
-  const func = useMemo(
+  // Core context value - minimal and essential only
+  const value = useMemo<AppContextValue>(
     () => ({
-      setAuth: (payload: any) => {
-        dispatch(actions.setAuth(payload));
-      },
-      setUser: (payload: any) => {
-        dispatch(actions.setUser(payload));
-      },
-      setEmail: (payload: string) => {
-        dispatch(actions.setEmail(payload));
-      },
-      setImage: (payload: string) => {
-        dispatch(actions.setImage(payload));
-      },
-      setRegistered: (payload: boolean) => {
-        dispatch(actions.setRegistered(payload));
-      },
-      setDefaultPassword: (payload: boolean) => {
-        dispatch(actions.setDefaultPassword(payload));
-      },
-      setBiometric: (payload: boolean) => {
-        dispatch(actions.setBiometric(payload));
-      },
-      toggleVisibility: (payload: Visibility) => {
-        dispatch(actions.toggleVisibility(payload));
-      },
-      setTimeout: async () => {
-        Toast('Session expired! kindly login', 'SHORT');
-        func.setLogout().catch(() => {});
-      },
-      setLogout: async () => {
-        dispatch(actions.setLogout());
-        dispatch(cache.actions.clear());
-        reset({
-          index: 0,
-          routes: [
-            // { name: 'welcome' },
-            {name: 'login'},
-          ],
-        });
-      },
+      auth: state.auth,
+      user: state.user,
+      connected,
+      setAuth: (payload) => dispatch(actions.setAuth(payload)),
+      setUser: (payload) => dispatch(actions.setUser(payload)),
+      clearAuth: () => dispatch(actions.clearAuth()),
     }),
-    [dispatch, reset],
-  );
-
-  const value = useMemo(
-    () => ({...state, connected, ...func}),
-    [state, connected, func],
+    [state.auth, state.user, connected, dispatch]
   );
 
   return (
     <AppContext.Provider value={value}>
-      <SocketContext>{children}</SocketContext>
+      {children}
     </AppContext.Provider>
   );
 };

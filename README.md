@@ -120,6 +120,10 @@ export default function App() {
         cache: {
           ttl: 10 * 60 * 1000, // 10 minutes
         },
+        encryption: {
+          key: process.env.ENCRYPTION_KEY, // 16 chars for AES-128
+          iv: process.env.ENCRYPTION_IV,   // 16 chars
+        },
         debug: __DEV__,
       }}
     >
@@ -130,6 +134,122 @@ export default function App() {
 ```
 
 For detailed configuration options, see [CONFIGURATION.md](./CONFIGURATION.md).
+
+## Store Customization
+
+`rn-alpha` provides a **minimal core state** (authentication & user) and lets you extend it with your own **custom reducers** for app-specific state like themes, settings, or preferences.
+
+### Why Customize the Store?
+
+✅ **Flexible** - Add any state your app needs  
+✅ **Type-Safe** - Full TypeScript support  
+✅ **Minimal Core** - Only essential state included  
+✅ **Your Rules** - Define your own structure and actions
+
+### Quick Start
+
+**1. Create your custom reducer:**
+
+```typescript
+import { createSlice } from '@reduxjs/toolkit';
+
+const settingsSlice = createSlice({
+  name: 'settings',
+  initialState: {
+    theme: 'light',
+    language: 'en',
+    notifications: true,
+  },
+  reducers: {
+    setTheme: (state, action) => {
+      state.theme = action.payload;
+    },
+    toggleNotifications: (state) => {
+      state.notifications = !state.notifications;
+    },
+  },
+});
+```
+
+**2. Pass to AlphaProvider:**
+
+```typescript
+<AlphaProvider
+  config={{
+    baseUrl: 'https://api.example.com',
+    // ... other config
+  }}
+  customReducers={{
+    settings: settingsSlice.reducer,
+    // Add more reducers as needed
+  }}
+>
+  <App />
+</AlphaProvider>
+```
+
+**3. Use in your components:**
+
+```typescript
+import { useSelector, useDispatch } from '@scripturecoder/rn-alpha';
+
+function SettingsScreen() {
+  const theme = useSelector((state) => state.settings.theme);
+  const dispatch = useDispatch();
+
+  return (
+    <button onClick={() => dispatch(settingsSlice.actions.setTheme('dark'))}>
+      Current: {theme}
+    </button>
+  );
+}
+```
+
+### Advanced: Custom Context Wrapper
+
+Wrap `useApp` with your own context for a unified API:
+
+```typescript
+import { createContext, useContext, useMemo } from 'react';
+import { useApp, useSelector, useDispatch } from '@scripturecoder/rn-alpha';
+
+export interface MyAppContextValue {
+  // Core from rn-alpha
+  auth: any;
+  user: any;
+  connected: boolean;
+  
+  // Your custom state
+  theme: string;
+  setTheme: (theme: string) => void;
+}
+
+export function MyAppProvider({ children }) {
+  const coreApp = useApp();
+  const settings = useSelector((state) => state.settings);
+  const dispatch = useDispatch();
+
+  const value = useMemo(() => ({
+    ...coreApp,
+    theme: settings.theme,
+    setTheme: (theme) => dispatch(settingsSlice.actions.setTheme(theme)),
+  }), [coreApp, settings, dispatch]);
+
+  return (
+    <MyAppContext.Provider value={value}>
+      {children}
+    </MyAppContext.Provider>
+  );
+}
+```
+
+### Documentation
+
+For complete documentation on store customization:
+
+- **[STORE_CUSTOMIZATION.md](./STORE_CUSTOMIZATION.md)** - Full guide with patterns, TypeScript tips, and migration help
+- **[`examples/custom-store-setup.tsx`](./examples/custom-store-setup.tsx)** - Complete example with multiple reducers
+- **[`examples/custom-context-wrapper.tsx`](./examples/custom-context-wrapper.tsx)** - Extended context pattern
 
 ## Custom Hook Wrappers
 
@@ -223,12 +343,15 @@ Built on Axios with modern features:
 - **Refetch Hooks** - `useRefetchOnFocus`, `useRefetchOnReconnect`, `useRefetchInterval`
 - **Other Utilities** - `formatMoney`, `encrypt`, `decrypt`, `storage`
 
-### 📦 Store & Context
+### 📦 Flexible Store System
 
+- **Minimal Core State** - Only essential auth & user state included
+- **Extensible** - Add custom reducers for your app-specific state (themes, settings, etc.)
 - **Redux Store** - Pre-configured store with intelligent cache and app reducers
 - **Cache with TTL** - Built-in support for cache entries with expiry and staleness
-- **Context Providers** - `AppProvider` for global app state
+- **Context Providers** - `AppProvider` for core state, extend with your own contexts
 - **Typed Hooks** - `useDispatch`, `useSelector` with full TypeScript support
+- **Custom Store Support** - Provide your own store or use `createAlphaStore` with custom reducers
 
 ## Package Exports
 
@@ -265,7 +388,11 @@ The package exports:
 - `NetworkPolicy`, `ConcatStrategy`, `TimingInfo`
 
 ### Store & Utilities
-- `AppProvider`, `store`, `AppDispatch`, `RootState`
+- `AlphaProvider` - Main provider with config and custom reducer support
+- `AppProvider`, `store`, `createAlphaStore`, `defaultStore`
+- `AppDispatch`, `RootState`, `CustomReducers`, `StoreOptions`
+- `CoreAppState`, `appActions` - Core state and actions
+- `AppContextValue` - Core context type for extensions
 - `formatMoney`, `encrypt`, `decrypt`, `storage`
 - `PATHS` - predefined API route definitions
 - `dayjs` with timezone and relative time plugins

@@ -26,6 +26,12 @@ export interface AlphaConfig {
     delay?: number | 'exponential';
   };
   
+  // Encryption Configuration
+  encryption?: {
+    key: string; // Must be 16 characters for AES-128
+    iv: string;  // Must be 16 characters
+  };
+  
   // Debug mode
   debug?: boolean;
 }
@@ -45,6 +51,7 @@ export const DEFAULT_CONFIG: AlphaConfig = {
     count: 3,
     delay: 'exponential',
   },
+  encryption: undefined, // No default - must be provided for security
   debug: false,
 };
 

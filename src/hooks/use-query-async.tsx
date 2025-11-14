@@ -107,8 +107,8 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
         dispatch(actions.set({ key, value: res.data.data }));
         return createSuccessResponse(res.data.data, res.status);
       } else if (isAuthError(res.status)) {
-        // Handle auth errors
-        app.setTimeout().catch(() => {});
+        // Handle auth errors - clear authentication
+        app.clearAuth();
         return createErrorResponse(error || "Unauthorized", res.status);
       }
       

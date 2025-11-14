@@ -4,6 +4,32 @@
  * This file demonstrates how to wrap rn-alpha hooks with encryption/decryption layers.
  * Use this pattern in your app to add custom business logic like encryption, logging, analytics, etc.
  * 
+ * IMPORTANT: Configure encryption keys before using these hooks!
+ * 
+ * Method 1 (Recommended): Via AlphaProvider
+ * ```typescript
+ * <AlphaProvider
+ *   config={{
+ *     baseUrl: '...',
+ *     encryption: {
+ *       key: process.env.ENCRYPTION_KEY,
+ *       iv: process.env.ENCRYPTION_IV,
+ *     },
+ *   }}
+ * >
+ * ```
+ * 
+ * Method 2: Runtime configuration
+ * ```typescript
+ * import { setEncryptionConfig } from '@scripturecoder/rn-alpha-hooks';
+ * setEncryptionConfig({
+ *   key: 'YourSecretKey123', // 16 characters
+ *   iv: 'YourIVValue12345',   // 16 characters
+ * });
+ * ```
+ * 
+ * See examples/encryption-config.tsx for comprehensive encryption examples.
+ * 
  * @example
  * // In your app, create hooks/useEncryptedQuery.ts with this pattern
  * // Then use it instead of the base useQuery

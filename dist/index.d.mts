@@ -1,9 +1,13 @@
 export { default as dayjs } from 'dayjs';
 import * as redux_thunk from 'redux-thunk';
 import * as redux from 'redux';
+import * as react_redux from 'react-redux';
 import { TypedUseSelectorHook } from 'react-redux';
 import * as _reduxjs_toolkit from '@reduxjs/toolkit';
+import { Reducer, PayloadAction, Store } from '@reduxjs/toolkit';
+export { createSlice } from '@reduxjs/toolkit';
 import React, { ReactNode } from 'react';
+import * as immer from 'immer';
 
 declare const PATHS: {
     login: string;
@@ -236,31 +240,104 @@ declare const useMutation: <T = any>(route: Route, option?: MutationOptions) => 
  */
 declare const useMutationAsync: <T = any>(route: string, option?: MutationOptions) => MutationResult<T>;
 
-interface AppState {
+declare const _default$1: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
+
+/**
+ * Custom reducers that apps can provide
+ */
+interface CustomReducers {
+    [key: string]: Reducer<any>;
+}
+/**
+ * Store configuration options
+ */
+interface StoreOptions {
+    /** Enable state persistence to local storage */
+    persist?: boolean;
+    /** Custom storage key for persistence */
+    storageKey?: string;
+}
+/**
+ * Creates a Redux store with core reducers + custom app reducers
+ * @param customReducers - Additional reducers for app-specific state
+ * @param options - Store configuration options
+ *
+ * @example
+ * // Basic usage
+ * const store = createAlphaStore();
+ *
+ * @example
+ * // With custom reducers
+ * const store = createAlphaStore({
+ *   settings: settingsReducer,
+ *   theme: themeReducer,
+ * });
+ *
+ * @example
+ * // With persistence
+ * const store = createAlphaStore(customReducers, {
+ *   persist: true,
+ *   storageKey: 'my-app-state'
+ * });
+ */
+declare function createAlphaStore<T extends CustomReducers = {}>(customReducers?: T, options?: StoreOptions): _reduxjs_toolkit.EnhancedStore<any, redux.UnknownAction, _reduxjs_toolkit.Tuple<[redux.StoreEnhancer<{
+    dispatch: redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction>;
+}>, redux.StoreEnhancer]>>;
+declare const defaultStore: _reduxjs_toolkit.EnhancedStore<any, redux.UnknownAction, _reduxjs_toolkit.Tuple<[redux.StoreEnhancer<{
+    dispatch: redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction>;
+}>, redux.StoreEnhancer]>>;
+type RootState<T extends CustomReducers = {}> = ReturnType<ReturnType<typeof createAlphaStore<T>>['getState']>;
+type AppDispatch = ReturnType<typeof createAlphaStore>['dispatch'];
+
+/**
+ * Minimal core app state - essentials only
+ * Apps can extend this with their own fields via custom reducers
+ */
+interface CoreAppState {
     auth: {
         accessToken: string;
-        customerId: string;
-        user: any;
+        refreshToken: string;
+        customerId?: string;
     };
-    registered: boolean;
-    deviceId: any;
-    email: string;
-    image: string;
-    defaultPassword: boolean;
-    biometric: boolean;
-    visibility: {
-        wallet: boolean;
-        savings: boolean;
-        total: boolean;
-        investment: boolean;
-    };
+    user: any;
 }
-
-declare const _default$1: () => redux_thunk.ThunkDispatch<{
-    app: AppState;
-    cache: CacheState;
-    tread: any;
-}, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
+declare const actions: _reduxjs_toolkit.CaseReducerActions<{
+    /**
+     * Set auth tokens and customer ID
+     * Accepts partial updates to merge with existing auth state
+     */
+    setAuth(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<Partial<CoreAppState['auth']>>): void;
+    /**
+     * Set user data
+     * Apps define their own user structure
+     */
+    setUser(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
+    /**
+     * Clear authentication state
+     * Resets both auth and user to initial values
+     */
+    clearAuth(state: immer.WritableDraft<CoreAppState>): void;
+}, "app">;
+/**
+ * Legacy type for backward compatibility
+ * @deprecated Apps should create their own custom reducers instead
+ */
+interface LegacyAppState extends CoreAppState {
+    /** @deprecated Create a custom reducer for app-specific fields */
+    registered?: boolean;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    deviceId?: any;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    email?: string;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    image?: string;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    defaultPassword?: boolean;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    biometric?: boolean;
+    /** @deprecated Create a custom reducer for app-specific fields */
+    visibility?: any;
+}
 
 /**
  * Cache entry structure with TTL support
@@ -287,20 +364,6 @@ declare function setMaxCacheSize(size: number): void;
  */
 declare function getCacheMetadata(): Readonly<CacheMetadata>;
 
-declare const store: _reduxjs_toolkit.EnhancedStore<{
-    app: AppState;
-    cache: CacheState;
-    tread: any;
-}, redux.UnknownAction, _reduxjs_toolkit.Tuple<[redux.StoreEnhancer<{
-    dispatch: redux_thunk.ThunkDispatch<{
-        app: AppState;
-        cache: CacheState;
-        tread: any;
-    }, undefined, redux.UnknownAction>;
-}>, redux.StoreEnhancer]>>;
-type AppDispatch = typeof store.dispatch;
-type RootState = ReturnType<typeof store.getState>;
-
 declare const useSelector: TypedUseSelectorHook<RootState>;
 
 /**
@@ -310,21 +373,49 @@ declare const useSelector: TypedUseSelectorHook<RootState>;
  */
 declare const useCache: () => CacheOperations;
 
-interface Props extends AppState {
-    setEmail: (payload: string) => void;
-    setImage: (payload: string) => void;
-    setRegistered: (payload: boolean) => void;
-    setUser: (payload: any) => void;
-    setAuth: (payload: any) => void;
-    setLogout: () => Promise<void>;
-    setTimeout: () => Promise<void>;
-    setDefaultPassword: (value: boolean) => void;
-    setBiometric: (value: boolean) => void;
-    toggleVisibility: (value: Visibility) => void;
+/**
+ * Core app context type
+ * Apps can extend this with their own methods by creating a custom context
+ */
+interface AppContextValue {
+    auth: CoreAppState['auth'];
+    user: any;
     connected: boolean;
+    setAuth: (payload: Partial<CoreAppState['auth']>) => void;
+    setUser: (payload: any) => void;
+    clearAuth: () => void;
 }
-declare const useApp: () => Props;
-declare const AppProvider: React.FC<any>;
+/**
+ * Hook to access app context
+ * Can be typed for custom extensions: useApp<MyAppContextType>()
+ */
+declare const useApp: <T = AppContextValue>() => T;
+/**
+ * Minimal app provider with core functionality only
+ * Apps can wrap this or create their own context for additional state
+ *
+ * @example
+ * // Basic usage
+ * <AppProvider>
+ *   <App />
+ * </AppProvider>
+ *
+ * @example
+ * // Extended usage in your app
+ * function MyAppProvider({ children }) {
+ *   const coreApp = useApp();
+ *   const customState = useSelector(state => state.myCustom);
+ *
+ *   return (
+ *     <MyContext.Provider value={{ ...coreApp, ...customState }}>
+ *       {children}
+ *     </MyContext.Provider>
+ *   );
+ * }
+ */
+declare const AppProvider: React.FC<{
+    children: React.ReactNode;
+}>;
 
 interface AlphaConfig {
     baseUrl: string;
@@ -341,6 +432,10 @@ interface AlphaConfig {
         enabled?: boolean;
         count?: number;
         delay?: number | 'exponential';
+    };
+    encryption?: {
+        key: string;
+        iv: string;
     };
     debug?: boolean;
 }
@@ -848,18 +943,54 @@ declare function useRefetchInterval(enabled: boolean, refetch: () => void, inter
 interface AlphaProviderProps {
     children: ReactNode;
     config: AlphaConfig;
+    /** Custom reducers to add to the store (e.g., theme, settings) */
+    customReducers?: CustomReducers;
+    /** Provide a completely custom store (overrides customReducers) */
+    store?: Store;
+    /** Store configuration options */
+    storeOptions?: StoreOptions;
 }
 /**
  * Root provider for rn-alpha package
  * Wraps your app with Redux, Config, and App contexts
+ * Now supports custom reducers and store configuration
  *
  * @example
+ * // Basic usage
  * ```typescript
  * <AlphaProvider config={{
  *   baseUrl: 'https://api.example.com',
  *   paths: { login: 'POST:/auth/login' },
  *   debug: __DEV__,
  * }}>
+ *   <App />
+ * </AlphaProvider>
+ * ```
+ *
+ * @example
+ * // With custom reducers
+ * ```typescript
+ * const settingsSlice = createSlice({
+ *   name: 'settings',
+ *   initialState: { theme: 'light' },
+ *   reducers: { setTheme: (state, action) => { state.theme = action.payload; } }
+ * });
+ *
+ * <AlphaProvider
+ *   config={{ baseUrl: 'https://api.example.com' }}
+ *   customReducers={{ settings: settingsSlice.reducer }}
+ * >
+ *   <App />
+ * </AlphaProvider>
+ * ```
+ *
+ * @example
+ * // With store options
+ * ```typescript
+ * <AlphaProvider
+ *   config={{ baseUrl: 'https://api.example.com' }}
+ *   storeOptions={{ persist: true, storageKey: 'my-app-state' }}
+ * >
  *   <App />
  * </AlphaProvider>
  * ```
@@ -872,10 +1003,206 @@ declare const AlphaProvider: React.FC<AlphaProviderProps>;
  */
 declare function useAlphaConfig(): AlphaConfig;
 
+/**
+ * Creates a typed selector hook for your app's complete state
+ *
+ * @example
+ * ```typescript
+ * // Define your app state
+ * interface MyAppState {
+ *   settings: SettingsState;
+ *   preferences: PreferencesState;
+ * }
+ *
+ * // Create typed selector
+ * export const useTypedSelector = createTypedSelector<MyAppState>();
+ *
+ * // Use in components
+ * const theme = useTypedSelector((state) => state.settings.theme); // fully typed!
+ * ```
+ */
+declare function createTypedSelector<TState extends Record<string, any>>(): TypedUseSelectorHook<TState>;
+/**
+ * Creates a typed dispatch hook for your app
+ *
+ * @example
+ * ```typescript
+ * export const useAppDispatch = createTypedDispatch();
+ *
+ * // Use in components
+ * const dispatch = useAppDispatch();
+ * dispatch(myAction()); // typed based on your reducers
+ * ```
+ */
+declare function createTypedDispatch(): {
+    (): redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
+    withTypes: <OverrideDispatchType extends redux.Dispatch<redux.UnknownAction>>() => react_redux.UseDispatch<OverrideDispatchType>;
+};
+/**
+ * Helper type to infer action types from a slice
+ *
+ * @example
+ * ```typescript
+ * const settingsSlice = createSlice({ ... });
+ * type SettingsActions = InferActions<typeof settingsSlice.actions>;
+ * ```
+ */
+type InferActions<T extends Record<string, (...args: any[]) => any>> = ReturnType<T[keyof T]>;
+/**
+ * Helper type to merge core state with custom state
+ *
+ * @example
+ * ```typescript
+ * import { RootState } from '@scripturecoder/rn-alpha';
+ *
+ * interface CustomSlices {
+ *   settings: SettingsState;
+ *   preferences: PreferencesState;
+ * }
+ *
+ * type AppState = ExtendedRootState<CustomSlices>;
+ * // Now AppState includes: app, cache, thread, settings, preferences
+ * ```
+ */
+type ExtendedRootState<TCustom extends Record<string, any>> = RootState<any> & TCustom;
+/**
+ * Helper to create a type-safe context value that extends AppContextValue
+ *
+ * @example
+ * ```typescript
+ * import { AppContextValue } from '@scripturecoder/rn-alpha';
+ *
+ * interface MyCustomFields {
+ *   theme: string;
+ *   setTheme: (theme: string) => void;
+ * }
+ *
+ * type MyAppContext = ExtendedAppContext<MyCustomFields>;
+ * // Includes: auth, user, connected, setAuth, setUser, clearAuth, theme, setTheme
+ * ```
+ */
+type ExtendedAppContext<TCustom extends Record<string, any>> = AppContextValue & TCustom;
+/**
+ * Helper to create strongly-typed selectors
+ *
+ * @example
+ * ```typescript
+ * const selectTheme = createSelector(
+ *   (state: AppState) => state.settings.theme
+ * );
+ *
+ * // Use in component
+ * const theme = useTypedSelector(selectTheme);
+ * ```
+ */
+declare function createSelector<TState, TResult>(selector: (state: TState) => TResult): (state: TState) => TResult;
+/**
+ * Helper to extract state type from a reducer
+ *
+ * @example
+ * ```typescript
+ * const settingsReducer = (state, action) => { ... };
+ * type SettingsState = StateFromReducer<typeof settingsReducer>;
+ * ```
+ */
+type StateFromReducer<TReducer extends (state: any, action: any) => any> = TReducer extends (state: infer S, action: any) => any ? S : never;
+
+/**
+ * Default typed hooks that work with the core RootState
+ * Can be used directly or as a starting point for your own typed hooks
+ */
+declare const useAppSelector: TypedUseSelectorHook<RootState>;
+declare const useAppDispatch: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
+
 declare function money(num: number, decimal: number): string;
 
-declare const encrypt: (payload: string) => any;
-declare const decrypt: (response: string) => any;
+/**
+ * Encryption configuration interface
+ */
+interface EncryptionConfig {
+    key: string;
+    iv: string;
+}
+/**
+ * Set encryption configuration globally
+ *
+ * @param config - Partial encryption config to merge with current config
+ *
+ * @example
+ * ```typescript
+ * import { setEncryptionConfig } from '@scripturecoder/rn-alpha-hooks';
+ *
+ * setEncryptionConfig({
+ *   key: process.env.ENCRYPTION_KEY,
+ *   iv: process.env.ENCRYPTION_IV
+ * });
+ * ```
+ */
+declare function setEncryptionConfig(config: Partial<EncryptionConfig>): void;
+/**
+ * Get current encryption configuration
+ *
+ * @returns Current encryption config
+ */
+declare function getEncryptionConfig(): EncryptionConfig;
+/**
+ * Validate encryption config
+ *
+ * @param config - Encryption config to validate
+ * @returns True if valid, false otherwise
+ */
+declare function isValidEncryptionConfig(config: Partial<EncryptionConfig>): boolean;
+/**
+ * Generate random encryption config (for development/testing)
+ * ⚠️ Store these securely - do not hardcode in your app!
+ *
+ * @returns New random encryption config
+ *
+ * @example
+ * ```typescript
+ * const config = generateEncryptionConfig();
+ * console.log('Store these securely:');
+ * console.log('Key:', config.key);
+ * console.log('IV:', config.iv);
+ * ```
+ */
+declare function generateEncryptionConfig(): EncryptionConfig;
+/**
+ * Encrypt a string using AES encryption
+ *
+ * @param payload - String to encrypt
+ * @param customKey - Optional custom encryption key (overrides global config)
+ * @param customIv - Optional custom IV (overrides global config)
+ * @returns Encrypted string
+ *
+ * @example
+ * ```typescript
+ * // Using global config
+ * const encrypted = encrypt('sensitive data');
+ *
+ * // Using custom keys for this operation
+ * const encrypted = encrypt('data', 'my-custom-key123', 'my-custom-iv-123');
+ * ```
+ */
+declare function encrypt(payload: string, customKey?: string, customIv?: string): string;
+/**
+ * Decrypt an encrypted string using AES decryption
+ *
+ * @param response - Encrypted string to decrypt
+ * @param customKey - Optional custom encryption key (must match encryption key)
+ * @param customIv - Optional custom IV (must match encryption IV)
+ * @returns Decrypted string
+ *
+ * @example
+ * ```typescript
+ * // Using global config
+ * const decrypted = decrypt(encryptedData);
+ *
+ * // Using custom keys (must match encryption keys)
+ * const decrypted = decrypt(encryptedData, 'my-custom-key123', 'my-custom-iv-123');
+ * ```
+ */
+declare function decrypt(response: string, customKey?: string, customIv?: string): string;
 
 declare class Storage {
     setItem: (key: string, value: any) => void;
@@ -885,4 +1212,4 @@ declare class Storage {
 }
 declare const _default: Storage;
 
-export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type ErrorResponse, type HttpOptions, type HttpResponse, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createCacheEntry, createDebugger, createErrorResponse, createSuccessResponse, createTimeoutController, decrypt, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, getCacheAge, getCacheData, getCacheMetadata, getHttpConfig, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, naira, retryWithBackoff, retryWithJitter, safeAbort, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, store, useAlphaConfig, useApp, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };

@@ -95,7 +95,8 @@ const useMutation = <T = any,>(
         // Check for auth errors
         if (rawPath.includes(":customerId") && isAuthError(res.status)) {
           errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
-          await app.setTimeout();
+          // Auth error - clear authentication
+          app.clearAuth();
         }
 
         setError(errorMessage);

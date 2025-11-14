@@ -100,7 +100,8 @@ const useMutationAsync = <T = any,>(
 
         // Check for auth errors (avoid login route check)
         if (isAuthError(res.status)) {
-          await app.setTimeout();
+          // Auth error - clear authentication
+          app.clearAuth();
         }
 
         const errorMessage = extractErrorMessage(res);

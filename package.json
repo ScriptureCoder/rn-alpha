@@ -1,7 +1,7 @@
 {
-  "name": "@scripturecoder/rn-alpha",
+  "name": "@scripturecoder/rn-alpha-hooks",
   "version": "0.0.1",
-  "description": "Reusable React Native hooks, store, and utilities.",
+  "description": "Flexible React Native hooks, extensible store, and utilities with TypeScript support.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -60,5 +60,29 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "keywords": [
+    "react-native",
+    "hooks",
+    "redux",
+    "state-management",
+    "cache",
+    "axios",
+    "typescript",
+    "queries",
+    "mutations",
+    "offline-first",
+    "request-cancellation",
+    "react-native-hooks"
+  ],
+  "author": "scripturecoder",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scripturecoder/rn-alpha"
+  },
+  "bugs": {
+    "url": "https://github.com/scripturecoder/rn-alpha/issues"
+  },
+  "homepage": "https://github.com/scripturecoder/rn-alpha#readme"
 }

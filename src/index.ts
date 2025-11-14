@@ -125,8 +125,33 @@ export { useAlphaConfig } from './store/contexts/config-context';
 
 // Store exports
 export { default as AppProvider } from './store/contexts/app-context';
-export { store } from './store';
-export type { AppDispatch, RootState } from './store';
+export { AppContextValue } from './store/contexts/app-context';
+export { store, createAlphaStore, defaultStore } from './store';
+export type { 
+  AppDispatch, 
+  RootState, 
+  CustomReducers, 
+  StoreOptions,
+  CoreAppState,
+  LegacyAppState,
+} from './store';
+export { appActions } from './store';
+
+// TypeScript helpers for custom stores
+export {
+  createTypedSelector,
+  createTypedDispatch,
+  useAppSelector,
+  useAppDispatch,
+  createSelector,
+  createSlice,
+} from './store/type-helpers';
+export type {
+  InferActions,
+  ExtendedRootState,
+  ExtendedAppContext,
+  StateFromReducer,
+} from './store/type-helpers';
 
 export { config as alphaConfig, naira } from './config';
 export { default as PATHS } from './paths';
@@ -136,7 +161,15 @@ export * from './types';
 export { setHttpConfig, getHttpConfig } from './utils/service';
 
 export { default as formatMoney } from './utils/money';
-export * from './utils/crypto';
+export { 
+  encrypt, 
+  decrypt, 
+  setEncryptionConfig, 
+  getEncryptionConfig,
+  isValidEncryptionConfig,
+  generateEncryptionConfig,
+} from './utils/crypto';
+export type { EncryptionConfig } from './utils/crypto';
 export { default as storage } from './utils/storage';
 
 // NEW: Constants

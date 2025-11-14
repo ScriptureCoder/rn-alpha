@@ -38,7 +38,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const policy: NetworkPolicy = networkPolicy || "cache-first";
 
   const data = useSelector((state) => state.cache[key]);
-  const thread = useSelector((state) => state.tread[key]);
+  const thread = useSelector((state) => state.thread[key]);
 
   const dispatch = useDispatch();
   const { connected } = useSocket();
@@ -185,7 +185,8 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
             }
             cache.setCache(key, res.data.data);
           } else if (isAuthError(res.status)) {
-            app.setTimeout().catch(() => {});
+            // Auth error - clear authentication
+            app.clearAuth();
           } else if (error && onError) {
             onError(error, res.status);
           }
@@ -260,7 +261,8 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           }
           return { data: res.data.data };
         } else if (isAuthError(res.status)) {
-          app.setTimeout().catch(() => {});
+          // Auth error - clear authentication
+          app.clearAuth();
           return { error };
         }
         return { error };

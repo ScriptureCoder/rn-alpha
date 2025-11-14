@@ -83,6 +83,76 @@ retry: {
 debug: __DEV__  // Enable detailed logging in development
 ```
 
+### Encryption Configuration
+
+Configure encryption keys for secure data transmission:
+
+```typescript
+encryption: {
+  key: process.env.ENCRYPTION_KEY || 'YourSecretKey123', // Must be 16 chars
+  iv: process.env.ENCRYPTION_IV || 'YourIVValue12345',   // Must be 16 chars
+}
+```
+
+**Important Security Notes:**
+- ⚠️ **Never hardcode encryption keys in source code**
+- ✅ Use environment variables for production keys
+- ✅ Keys must be exactly 16 characters for AES-128
+- ✅ Use `generateEncryptionConfig()` to create random keys
+- ✅ Store keys securely (e.g., react-native-keychain)
+
+**Available Functions:**
+- `setEncryptionConfig({ key, iv })` - Update keys at runtime
+- `getEncryptionConfig()` - Get current encryption config
+- `isValidEncryptionConfig(config)` - Validate key format
+- `generateEncryptionConfig()` - Generate random keys
+- `encrypt(data, customKey?, customIv?)` - Encrypt with optional custom keys
+- `decrypt(data, customKey?, customIv?)` - Decrypt with optional custom keys
+
+**Example: Generate New Keys**
+
+```typescript
+import { generateEncryptionConfig } from '@scripturecoder/rn-alpha-hooks';
+
+// Generate random keys (store these securely!)
+const config = generateEncryptionConfig();
+console.log('Key:', config.key);
+console.log('IV:', config.iv);
+```
+
+**Example: Runtime Key Update**
+
+```typescript
+import { setEncryptionConfig } from '@scripturecoder/rn-alpha-hooks';
+
+// Update keys after user login
+function handleLogin(userSession) {
+  const userKey = deriveKeyFromSession(userSession);
+  setEncryptionConfig({
+    key: userKey,
+    iv: userSession.substring(0, 16),
+  });
+}
+```
+
+**Example: Per-Operation Custom Keys**
+
+```typescript
+import { encrypt, decrypt } from '@scripturecoder/rn-alpha-hooks';
+
+// Encrypt with custom keys for highly sensitive data
+const encrypted = encrypt(
+  'sensitive data',
+  'CustomKey1234567',  // Custom key
+  'CustomIV12345678'   // Custom IV
+);
+
+// Decrypt with same custom keys
+const decrypted = decrypt(encrypted, 'CustomKey1234567', 'CustomIV12345678');
+```
+
+See [`examples/encryption-config.tsx`](./examples/encryption-config.tsx) for comprehensive examples.
+
 ## Full Example
 
 ```typescript
@@ -119,6 +189,12 @@ function App() {
           enabled: true,
           count: 5,
           delay: 'exponential',
+        },
+        
+        // Encryption
+        encryption: {
+          key: process.env.ENCRYPTION_KEY,
+          iv: process.env.ENCRYPTION_IV,
         },
         
         // Debug
