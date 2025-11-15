@@ -260,13 +260,11 @@ async function http<T = any>(
     // Format response based on options
     if (returnStatus) {
       return {
-        data: {
-          data: returnText
-            ? response.data
-            : typeof response.data === 'string'
-            ? response.data
-            : response.data,
-        },
+        data: returnText
+          ? response.data
+          : typeof response.data === 'string'
+          ? response.data
+          : response.data,
         status: response.status,
       };
     }
@@ -280,9 +278,7 @@ async function http<T = any>(
 
     // Return error response in standard format
     return {
-      data: {
-        error: error.message || 'An error occurred',
-      },
+      data: error.response?.data || { error: error.message || 'An error occurred' },
       status: error.response?.status || 500,
     };
   }

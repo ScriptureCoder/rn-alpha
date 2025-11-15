@@ -67,7 +67,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 // src/hooks/use-query.tsx
-import { useEffect as useEffect3, useMemo as useMemo2, useRef as useRef2, useCallback as useCallback2 } from "react";
+import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef2, useCallback as useCallback2 } from "react";
 
 // src/utils/service.ts
 import axios from "axios";
@@ -89,6 +89,8 @@ var DEFAULT_CONFIG = {
   },
   encryption: void 0,
   // No default - must be provided for security
+  dataPath: "data",
+  // Default to res.data.data for backward compatibility
   debug: false
 };
 var naira = "\u20A6";
@@ -181,7 +183,7 @@ var formatRequestData = (data, contentType, method) => {
   }
 };
 async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, legacyReturnText) {
-  var _a;
+  var _a, _b;
   let options;
   if (typeof optionsOrStatus === "boolean") {
     options = {
@@ -224,9 +226,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     const response = await axiosInstance.request(config2);
     if (returnStatus) {
       return {
-        data: {
-          data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data
-        },
+        data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data,
         status: response.status
       };
     }
@@ -236,10 +236,8 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       throw error;
     }
     return {
-      data: {
-        error: error.message || "An error occurred"
-      },
-      status: ((_a = error.response) == null ? void 0 : _a.status) || 500
+      data: ((_a = error.response) == null ? void 0 : _a.data) || { error: error.message || "An error occurred" },
+      status: ((_b = error.response) == null ? void 0 : _b.status) || 500
     };
   }
 }
@@ -817,590 +815,20 @@ function canUseCache(entry) {
   return entry && !isCacheExpired(entry);
 }
 
-// src/hooks/use-query.tsx
-var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
-  const app = useApp();
-  const { auth } = app;
-  const cache = use_cache_default();
-  const { key, path, method } = cache.getContext(route, variables);
-  const policy = networkPolicy || "cache-first";
-  const data = use_selector_default((state) => state.cache[key]);
-  const thread = use_selector_default((state) => state.thread[key]);
-  const dispatch = use_dispatch_default();
-  const { connected } = useSocket();
-  const timeoutRef = useRef2(null);
-  const abortControllerRef = useRef2(null);
-  useEffect3(() => {
-    if (data && onCompleted) {
-      onCompleted(data);
-    }
-    if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
-      refetch({});
-    }
-  }, [data, connected, thread == null ? void 0 : thread.error]);
-  useEffect3(() => {
-    fetchData(variables);
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-  useEffect3(() => {
-    if (init && init.timestamp > ((data == null ? void 0 : data.timestamp) || 0)) {
-      dispatch(actions2.init({ key, value: init }));
-    }
-  }, [init == null ? void 0 : init.timestamp, key, dispatch, data == null ? void 0 : data.timestamp]);
-  const setThread = useCallback2(
-    (loading, error) => {
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading,
-            error
-          }
-        })
-      );
-    },
-    [dispatch, key]
-  );
-  const fetchData = useCallback2(
-    (fetchVariables) => {
-      switch (policy) {
-        case "cache-only":
-          return;
-        case "network-only":
-          fetchHandler(fetchVariables).catch(() => {
-          });
-          return;
-        case "cache-first":
-          if (!data) {
-            fetchHandler(fetchVariables).catch(() => {
-            });
-          }
-          return;
-        case "network-and-cache":
-          fetchHandler(fetchVariables).catch(() => {
-          });
-          timeoutRef.current = setTimeout(() => {
-            const currentThread = thread;
-            if (currentThread == null ? void 0 : currentThread.loading) {
-              refetch({});
-            }
-          }, NETWORK_TIMEOUT);
-          return;
-        case "stale-while-revalidate":
-          if (data && !isCacheExpired(data)) {
-            if (isCacheStale(data)) {
-              fetchHandler(fetchVariables).catch(() => {
-              });
-            }
-          } else {
-            fetchHandler(fetchVariables).catch(() => {
-            });
-          }
-          return;
-      }
-    },
-    [policy, data, thread]
-  );
-  const fetchHandler = useCallback2(
-    async (fetchVariables, isRefetch = false) => {
-      try {
-        if (!(thread == null ? void 0 : thread.loading) || (thread == null ? void 0 : thread.error) || isRefetch) {
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-          abortControllerRef.current = new AbortController();
-          setThread(true);
-          const res = await getOrCreateRequest(
-            key,
-            () => service_default(
-              path,
-              method || "GET",
-              fetchVariables,
-              {
-                returnStatus: true,
-                auth: auth.accessToken,
-                signal: abortControllerRef.current.signal
-              }
-            )
-          );
-          const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
-          setThread(false, error);
-          if (isSuccessStatus(res.status) && res.data.data) {
-            if (onCompleted) {
-              onCompleted(res.data.data);
-            }
-            cache.setCache(key, res.data.data);
-          } else if (isAuthError(res.status)) {
-            app.clearAuth();
-          } else if (error && onError) {
-            onError(error, res.status);
-          }
-        }
-      } catch (e) {
-        if (isAbortError2(e)) {
-          return;
-        }
-        const error = e.message || "Oops! an error occurred";
-        setThread(false, error);
-        if (onError) {
-          onError(error, 500);
-        }
-      }
-    },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
-  );
-  const refetch = useCallback2(
-    (refetchVariables) => {
-      fetchHandler({ ...variables, ...refetchVariables || {} }, true).catch(() => {
-      });
-    },
-    [fetchHandler, variables]
-  );
-  const fetchMore = useCallback2(
-    async (fetchMoreVariables, concat, paginationKey) => {
-      try {
-        const fetchMoreController = new AbortController();
-        const res = await service_default(
-          path,
-          method || "GET",
-          { ...variables, ...fetchMoreVariables || {} },
-          {
-            returnStatus: true,
-            auth: auth == null ? void 0 : auth.accessToken,
-            signal: fetchMoreController.signal
-          }
-        );
-        const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
-        if (isSuccessStatus(res.status)) {
-          if (concat === "start") {
-            dispatch(actions2.prepend({ key, value: res.data.data }));
-          } else if (concat === "end") {
-            dispatch(actions2.append({ key, value: res.data.data }));
-          } else if (concat === "pagination") {
-            dispatch(
-              actions2.paginate({
-                key,
-                data: res.data.data,
-                paginationKey: paginationKey || "data"
-              })
-            );
-          }
-          return { data: res.data.data };
-        } else if (isAuthError(res.status)) {
-          app.clearAuth();
-          return { error };
-        }
-        return { error };
-      } catch (e) {
-        if (isAbortError2(e)) {
-          return { error: "Request cancelled" };
-        }
-        const error = e.message || "Oops! an error occurred";
-        return { error };
-      }
-    },
-    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app]
-  );
-  const abort = useCallback2(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    cancelRequest(key);
-  }, [key]);
-  const optimisticUpdate = useCallback2(
-    (updater, rollback) => {
-      const currentData = data;
-      const newData = updater(currentData);
-      cache.update(key, newData);
-      return () => {
-        if (rollback) {
-          rollback();
-        } else {
-          cache.update(key, currentData);
-        }
-      };
-    },
-    [data, key, cache]
-  );
-  const extendCache = useMemo2(
-    () => ({
-      update: (newData) => {
-        cache.update(key, newData);
-      },
-      updateValue: (arg, value) => {
-        cache.updateValue(key, arg, value);
-      },
-      updateValues: (values) => {
-        cache.updateValues(key, values);
-      },
-      updateItem: (id, value) => {
-        cache.updateItem(key, id, value);
-      },
-      deleteItem: (id) => {
-        cache.deleteItem(key, id);
-      },
-      prepend: (newData) => {
-        cache.prepend(key, newData);
-      },
-      append: (newData) => {
-        cache.append(key, newData);
-      }
-    }),
-    [key, cache]
-  );
-  return {
-    data: data || init,
-    loading: (thread == null ? void 0 : thread.loading) || false,
-    error: thread == null ? void 0 : thread.error,
-    refetch,
-    key,
-    fetchMore,
-    abort,
-    optimisticUpdate,
-    ...extendCache
-  };
+// src/hooks/utils/response-helpers.ts
+var extractResponseData = (response, dataPath) => {
+  if (!dataPath) {
+    return response;
+  }
+  const path = dataPath.trim();
+  if (!path) {
+    return response;
+  }
+  return path.split(".").reduce((obj, key) => obj == null ? void 0 : obj[key], response);
 };
-var use_query_default = useQuery;
 
-// src/hooks/use-query-async.tsx
-var useQueryAsync = () => {
-  const app = useApp();
-  const { auth } = app;
-  const { getContext } = use_cache_default();
-  const dispatch = use_dispatch_default();
-  return async (route, variables = {}, options) => {
-    const { key, method, path } = getContext(route, variables);
-    const opts = typeof options === "string" ? { authToken: options } : options || {};
-    try {
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: true,
-            error: void 0
-          }
-        })
-      );
-      const res = await service_default(
-        path,
-        method || "GET",
-        variables,
-        {
-          returnStatus: true,
-          auth: opts.authToken || auth.accessToken,
-          signal: opts.signal
-        }
-      );
-      const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: false,
-            error
-          }
-        })
-      );
-      if (isSuccessStatus(res.status)) {
-        dispatch(actions2.set({ key, value: res.data.data }));
-        return createSuccessResponse(res.data.data, res.status);
-      } else if (isAuthError(res.status)) {
-        app.clearAuth();
-        return createErrorResponse(error || "Unauthorized", res.status);
-      }
-      return createErrorResponse(error || "Request failed", res.status);
-    } catch (e) {
-      if (isAbortError2(e)) {
-        dispatch(
-          actions3.set({
-            key,
-            value: {
-              loading: false,
-              error: void 0
-            }
-          })
-        );
-        return createErrorResponse("Request cancelled", 0);
-      }
-      const error = e.message || "Oops! an error occurred";
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: false,
-            error
-          }
-        })
-      );
-      return createErrorResponse(error, 500);
-    }
-  };
-};
-var use_query_async_default = useQueryAsync;
-
-// src/hooks/use-mutation.tsx
-import { useState as useState3, useCallback as useCallback3, useRef as useRef3, useEffect as useEffect4 } from "react";
-import { Keyboard } from "react-native";
-var useMutation = (route, option) => {
-  const [loading, setLoading] = useState3(false);
-  const [error, setError] = useState3(void 0);
-  const [data, setData] = useState3(void 0);
-  const app = useApp();
-  const { auth } = app;
-  const { getContext } = use_cache_default();
-  const abortControllerRef = useRef3(null);
-  useEffect4(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-  const mutate = useCallback3(
-    async (variables) => {
-      try {
-        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          Keyboard.dismiss();
-        }
-        const { path, method, rawPath } = getContext(route, variables);
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-        setLoading(true);
-        setError(void 0);
-        const res = await service_default(
-          path,
-          method || "POST",
-          variables,
-          {
-            returnStatus: true,
-            auth: auth == null ? void 0 : auth.accessToken,
-            returnText: option == null ? void 0 : option.text,
-            signal: abortControllerRef.current.signal
-          }
-        );
-        if (isSuccessStatus(res.status)) {
-          const responseData = res.data.data;
-          setData(responseData);
-          setLoading(false);
-          return createSuccessResponse(responseData, res.status);
-        }
-        let errorMessage = extractErrorMessage(res);
-        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
-          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
-          app.clearAuth();
-        }
-        setError(errorMessage);
-        setLoading(false);
-        return createErrorResponse(errorMessage, res.status);
-      } catch (e) {
-        if (isAbortError2(e)) {
-          setLoading(false);
-          return createErrorResponse("Request cancelled", 0);
-        }
-        setLoading(false);
-        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
-        setError(errorMessage);
-        return createErrorResponse(errorMessage, 500);
-      }
-    },
-    [route, option, auth, app, getContext]
-  );
-  const cancel = useCallback3(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
-  return [
-    mutate,
-    {
-      loading,
-      error,
-      data,
-      cancel
-    }
-  ];
-};
-var use_mutation_default = useMutation;
-
-// src/hooks/use-mutation-async.tsx
-import { useState as useState4, useCallback as useCallback4, useRef as useRef4, useEffect as useEffect5 } from "react";
-import { Keyboard as Keyboard2 } from "react-native";
-var useMutationAsync = (route, option) => {
-  const [loading, setLoading] = useState4(false);
-  const [error, setError] = useState4(void 0);
-  const [data, setData] = useState4(void 0);
-  const app = useApp();
-  const { auth } = app;
-  const abortControllerRef = useRef4(null);
-  useEffect5(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-  const mutate = useCallback4(
-    async (variables) => {
-      try {
-        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          Keyboard2.dismiss();
-        }
-        const [method, pathTemplate] = route.split(":/");
-        const variablesCopy = { ...variables };
-        const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
-          const paramName = matched.replace(/\W/g, "");
-          const value = variablesCopy[paramName];
-          delete variablesCopy[paramName];
-          return value || matched;
-        });
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-        setLoading(true);
-        setError(void 0);
-        const res = await service_default(
-          path,
-          method || "POST",
-          variablesCopy,
-          {
-            returnStatus: true,
-            auth: auth.accessToken,
-            signal: abortControllerRef.current.signal
-          }
-        );
-        if (isSuccessStatus(res.status)) {
-          const responseData = res.data.data;
-          setData(responseData);
-          setLoading(false);
-          return createSuccessResponse(responseData, res.status);
-        }
-        if (isAuthError(res.status)) {
-          app.clearAuth();
-        }
-        const errorMessage = extractErrorMessage(res);
-        setError(errorMessage);
-        setLoading(false);
-        return createErrorResponse(errorMessage, res.status);
-      } catch (e) {
-        if (isAbortError2(e)) {
-          setLoading(false);
-          return createErrorResponse("Request cancelled", 0);
-        }
-        setLoading(false);
-        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
-        setError(errorMessage);
-        return createErrorResponse(errorMessage, 500);
-      }
-    },
-    [route, option, auth, app]
-  );
-  const cancel = useCallback4(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
-  return [
-    mutate,
-    {
-      loading,
-      error,
-      data,
-      cancel
-    }
-  ];
-};
-var use_mutation_async_default = useMutationAsync;
-
-// src/utils/http-helpers.ts
-var createAbortController = () => {
-  return new AbortController();
-};
-var isAbortError3 = (error) => {
-  var _a, _b;
-  if (!error) return false;
-  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
-};
-var isCancelError = (error) => {
-  return isAbortError3(error);
-};
-var shouldRetry2 = (error) => {
-  var _a, _b;
-  if (isAbortError3(error)) {
-    return false;
-  }
-  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
-    return false;
-  }
-  return true;
-};
-var formatFormData2 = (data) => {
-  const formData = new FormData();
-  for (const key in data) {
-    if (data.hasOwnProperty(key)) {
-      const value = data[key];
-      if (value !== null && value !== void 0) {
-        formData.append(key, value);
-      }
-    }
-  }
-  return formData;
-};
-var formatUrlEncoded2 = (data) => {
-  const formBody = [];
-  for (const property in data) {
-    if (data.hasOwnProperty(property)) {
-      const value = data[property];
-      if (value !== null && value !== void 0) {
-        const encodedKey = encodeURIComponent(property);
-        const encodedValue = encodeURIComponent(value);
-        formBody.push(`${encodedKey}=${encodedValue}`);
-      }
-    }
-  }
-  return formBody.join("&");
-};
-var safeAbort = (controller) => {
-  if (controller && !controller.signal.aborted) {
-    controller.abort();
-  }
-};
-var createTimeoutController = (timeoutMs) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-  const cleanup = () => {
-    clearTimeout(timeoutId);
-  };
-  return { controller, cleanup };
-};
-var combineAbortSignals = (signals) => {
-  const controller = new AbortController();
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort();
-      break;
-    }
-    signal.addEventListener("abort", () => {
-      controller.abort();
-    }, { once: true });
-  }
-  return controller;
-};
+// src/store/contexts/config-context.tsx
+import { createContext as createContext3, useContext as useContext3, useMemo as useMemo2, useEffect as useEffect3 } from "react";
 
 // src/hooks/utils/debug-logger.ts
 var QueryDebugger = class {
@@ -1537,6 +965,647 @@ function isGlobalDebugEnabled() {
 function createDebugger(enabled, prefix) {
   return new QueryDebugger(enabled != null ? enabled : globalDebugEnabled, prefix);
 }
+
+// src/store/contexts/config-context.tsx
+import { jsx as jsx3 } from "react/jsx-runtime";
+var ConfigContext = createContext3(void 0);
+var ConfigProvider = ({ config: config2, children }) => {
+  var _a;
+  const mergedConfig = useMemo2(
+    () => ({
+      ...DEFAULT_CONFIG,
+      ...config2,
+      cache: {
+        ...DEFAULT_CONFIG.cache,
+        ...config2.cache
+      },
+      retry: {
+        ...DEFAULT_CONFIG.retry,
+        ...config2.retry
+      }
+    }),
+    [config2]
+  );
+  useEffect3(() => {
+    var _a2;
+    if ((_a2 = mergedConfig.cache) == null ? void 0 : _a2.maxSize) {
+      setMaxCacheSize(mergedConfig.cache.maxSize);
+    }
+  }, [(_a = mergedConfig.cache) == null ? void 0 : _a.maxSize]);
+  useEffect3(() => {
+    if (mergedConfig.debug) {
+      enableGlobalDebug();
+    } else {
+      disableGlobalDebug();
+    }
+  }, [mergedConfig.debug]);
+  useEffect3(() => {
+    setHttpConfig(mergedConfig);
+  }, [mergedConfig]);
+  const value = useMemo2(() => ({ config: mergedConfig }), [mergedConfig]);
+  return /* @__PURE__ */ jsx3(ConfigContext.Provider, { value, children });
+};
+function useAlphaConfig() {
+  const context = useContext3(ConfigContext);
+  if (!context) {
+    return DEFAULT_CONFIG;
+  }
+  return context.config;
+}
+var config_context_default = ConfigProvider;
+
+// src/hooks/use-query.tsx
+var useQuery = (route, args) => {
+  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
+  const app = useApp();
+  const { auth } = app;
+  const cache = use_cache_default();
+  const { key, path, method } = cache.getContext(route, variables);
+  const policy = networkPolicy || "cache-first";
+  const config2 = useAlphaConfig();
+  const data = use_selector_default((state) => state.cache[key]);
+  const thread = use_selector_default((state) => state.thread[key]);
+  const dispatch = use_dispatch_default();
+  const { connected } = useSocket();
+  const timeoutRef = useRef2(null);
+  const abortControllerRef = useRef2(null);
+  useEffect4(() => {
+    if (data && onCompleted) {
+      onCompleted(data);
+    }
+    if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
+      refetch({});
+    }
+  }, [data, connected, thread == null ? void 0 : thread.error]);
+  useEffect4(() => {
+    fetchData(variables);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  useEffect4(() => {
+    if (init && init.timestamp > ((data == null ? void 0 : data.timestamp) || 0)) {
+      dispatch(actions2.init({ key, value: init }));
+    }
+  }, [init == null ? void 0 : init.timestamp, key, dispatch, data == null ? void 0 : data.timestamp]);
+  const setThread = useCallback2(
+    (loading, error) => {
+      dispatch(
+        actions3.set({
+          key,
+          value: {
+            loading,
+            error
+          }
+        })
+      );
+    },
+    [dispatch, key]
+  );
+  const fetchData = useCallback2(
+    (fetchVariables) => {
+      switch (policy) {
+        case "cache-only":
+          return;
+        case "network-only":
+          fetchHandler(fetchVariables).catch(() => {
+          });
+          return;
+        case "cache-first":
+          if (!data) {
+            fetchHandler(fetchVariables).catch(() => {
+            });
+          }
+          return;
+        case "network-and-cache":
+          fetchHandler(fetchVariables).catch(() => {
+          });
+          timeoutRef.current = setTimeout(() => {
+            const currentThread = thread;
+            if (currentThread == null ? void 0 : currentThread.loading) {
+              refetch({});
+            }
+          }, NETWORK_TIMEOUT);
+          return;
+        case "stale-while-revalidate":
+          if (data && !isCacheExpired(data)) {
+            if (isCacheStale(data)) {
+              fetchHandler(fetchVariables).catch(() => {
+              });
+            }
+          } else {
+            fetchHandler(fetchVariables).catch(() => {
+            });
+          }
+          return;
+      }
+    },
+    [policy, data, thread]
+  );
+  const fetchHandler = useCallback2(
+    async (fetchVariables, isRefetch = false) => {
+      try {
+        if (!(thread == null ? void 0 : thread.loading) || (thread == null ? void 0 : thread.error) || isRefetch) {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+          abortControllerRef.current = new AbortController();
+          setThread(true);
+          const res = await getOrCreateRequest(
+            key,
+            () => service_default(
+              path,
+              method || "GET",
+              fetchVariables,
+              {
+                returnStatus: true,
+                auth: auth.accessToken,
+                signal: abortControllerRef.current.signal
+              }
+            )
+          );
+          const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+          setThread(false, error);
+          if (isSuccessStatus(res.status)) {
+            const responseData = extractResponseData(res.data, config2.dataPath);
+            if (responseData) {
+              if (onCompleted) {
+                onCompleted(responseData);
+              }
+              cache.setCache(key, responseData);
+            }
+          } else if (isAuthError(res.status)) {
+            app.clearAuth();
+          } else if (error && onError) {
+            onError(error, res.status);
+          }
+        }
+      } catch (e) {
+        if (isAbortError2(e)) {
+          return;
+        }
+        const error = e.message || "Oops! an error occurred";
+        setThread(false, error);
+        if (onError) {
+          onError(error, 500);
+        }
+      }
+    },
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
+  );
+  const refetch = useCallback2(
+    (refetchVariables) => {
+      fetchHandler({ ...variables, ...refetchVariables || {} }, true).catch(() => {
+      });
+    },
+    [fetchHandler, variables]
+  );
+  const fetchMore = useCallback2(
+    async (fetchMoreVariables, concat, paginationKey) => {
+      try {
+        const fetchMoreController = new AbortController();
+        const res = await service_default(
+          path,
+          method || "GET",
+          { ...variables, ...fetchMoreVariables || {} },
+          {
+            returnStatus: true,
+            auth: auth == null ? void 0 : auth.accessToken,
+            signal: fetchMoreController.signal
+          }
+        );
+        const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+        if (isSuccessStatus(res.status)) {
+          if (concat === "start") {
+            dispatch(actions2.prepend({ key, value: res.data.data }));
+          } else if (concat === "end") {
+            dispatch(actions2.append({ key, value: res.data.data }));
+          } else if (concat === "pagination") {
+            dispatch(
+              actions2.paginate({
+                key,
+                data: res.data.data,
+                paginationKey: paginationKey || "data"
+              })
+            );
+          }
+          return { data: res.data.data };
+        } else if (isAuthError(res.status)) {
+          app.clearAuth();
+          return { error };
+        }
+        return { error };
+      } catch (e) {
+        if (isAbortError2(e)) {
+          return { error: "Request cancelled" };
+        }
+        const error = e.message || "Oops! an error occurred";
+        return { error };
+      }
+    },
+    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app]
+  );
+  const abort = useCallback2(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    cancelRequest(key);
+  }, [key]);
+  const optimisticUpdate = useCallback2(
+    (updater, rollback) => {
+      const currentData = data;
+      const newData = updater(currentData);
+      cache.update(key, newData);
+      return () => {
+        if (rollback) {
+          rollback();
+        } else {
+          cache.update(key, currentData);
+        }
+      };
+    },
+    [data, key, cache]
+  );
+  const extendCache = useMemo3(
+    () => ({
+      update: (newData) => {
+        cache.update(key, newData);
+      },
+      updateValue: (arg, value) => {
+        cache.updateValue(key, arg, value);
+      },
+      updateValues: (values) => {
+        cache.updateValues(key, values);
+      },
+      updateItem: (id, value) => {
+        cache.updateItem(key, id, value);
+      },
+      deleteItem: (id) => {
+        cache.deleteItem(key, id);
+      },
+      prepend: (newData) => {
+        cache.prepend(key, newData);
+      },
+      append: (newData) => {
+        cache.append(key, newData);
+      }
+    }),
+    [key, cache]
+  );
+  return {
+    data: data || init,
+    loading: (thread == null ? void 0 : thread.loading) || false,
+    error: thread == null ? void 0 : thread.error,
+    refetch,
+    key,
+    fetchMore,
+    abort,
+    optimisticUpdate,
+    ...extendCache
+  };
+};
+var use_query_default = useQuery;
+
+// src/hooks/use-query-async.tsx
+var useQueryAsync = () => {
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = use_cache_default();
+  const dispatch = use_dispatch_default();
+  const config2 = useAlphaConfig();
+  return async (route, variables = {}, options) => {
+    const { key, method, path } = getContext(route, variables);
+    const opts = typeof options === "string" ? { authToken: options } : options || {};
+    try {
+      dispatch(
+        actions3.set({
+          key,
+          value: {
+            loading: true,
+            error: void 0
+          }
+        })
+      );
+      const res = await service_default(
+        path,
+        method || "GET",
+        variables,
+        {
+          returnStatus: true,
+          auth: opts.authToken || auth.accessToken,
+          signal: opts.signal
+        }
+      );
+      const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
+      dispatch(
+        actions3.set({
+          key,
+          value: {
+            loading: false,
+            error
+          }
+        })
+      );
+      if (isSuccessStatus(res.status)) {
+        const responseData = extractResponseData(res.data, config2.dataPath);
+        dispatch(actions2.set({ key, value: responseData }));
+        return createSuccessResponse(responseData, res.status);
+      } else if (isAuthError(res.status)) {
+        app.clearAuth();
+        return createErrorResponse(error || "Unauthorized", res.status);
+      }
+      return createErrorResponse(error || "Request failed", res.status);
+    } catch (e) {
+      if (isAbortError2(e)) {
+        dispatch(
+          actions3.set({
+            key,
+            value: {
+              loading: false,
+              error: void 0
+            }
+          })
+        );
+        return createErrorResponse("Request cancelled", 0);
+      }
+      const error = e.message || "Oops! an error occurred";
+      dispatch(
+        actions3.set({
+          key,
+          value: {
+            loading: false,
+            error
+          }
+        })
+      );
+      return createErrorResponse(error, 500);
+    }
+  };
+};
+var use_query_async_default = useQueryAsync;
+
+// src/hooks/use-mutation.tsx
+import { useState as useState3, useCallback as useCallback3, useRef as useRef3, useEffect as useEffect5 } from "react";
+import { Keyboard } from "react-native";
+var useMutation = (route, option) => {
+  const [loading, setLoading] = useState3(false);
+  const [error, setError] = useState3(void 0);
+  const [data, setData] = useState3(void 0);
+  const app = useApp();
+  const { auth } = app;
+  const { getContext } = use_cache_default();
+  const config2 = useAlphaConfig();
+  const abortControllerRef = useRef3(null);
+  useEffect5(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  const mutate = useCallback3(
+    async (variables) => {
+      try {
+        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
+          Keyboard.dismiss();
+        }
+        const { path, method, rawPath } = getContext(route, variables);
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        setLoading(true);
+        setError(void 0);
+        const res = await service_default(
+          path,
+          method || "POST",
+          variables,
+          {
+            returnStatus: true,
+            auth: auth == null ? void 0 : auth.accessToken,
+            returnText: option == null ? void 0 : option.text,
+            signal: abortControllerRef.current.signal
+          }
+        );
+        if (isSuccessStatus(res.status)) {
+          const responseData = extractResponseData(res.data, config2.dataPath);
+          setData(responseData);
+          setLoading(false);
+          return createSuccessResponse(responseData, res.status);
+        }
+        let errorMessage = extractErrorMessage(res);
+        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
+          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
+          app.clearAuth();
+        }
+        setError(errorMessage);
+        setLoading(false);
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e) {
+        if (isAbortError2(e)) {
+          setLoading(false);
+          return createErrorResponse("Request cancelled", 0);
+        }
+        setLoading(false);
+        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+        setError(errorMessage);
+        return createErrorResponse(errorMessage, 500);
+      }
+    },
+    [route, option, auth, app, getContext]
+  );
+  const cancel = useCallback3(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+  return [
+    mutate,
+    {
+      loading,
+      error,
+      data,
+      cancel
+    }
+  ];
+};
+var use_mutation_default = useMutation;
+
+// src/hooks/use-mutation-async.tsx
+import { useState as useState4, useCallback as useCallback4, useRef as useRef4, useEffect as useEffect6 } from "react";
+import { Keyboard as Keyboard2 } from "react-native";
+var useMutationAsync = (route, option) => {
+  const [loading, setLoading] = useState4(false);
+  const [error, setError] = useState4(void 0);
+  const [data, setData] = useState4(void 0);
+  const app = useApp();
+  const { auth } = app;
+  const config2 = useAlphaConfig();
+  const abortControllerRef = useRef4(null);
+  useEffect6(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  const mutate = useCallback4(
+    async (variables) => {
+      try {
+        if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
+          Keyboard2.dismiss();
+        }
+        const [method, pathTemplate] = route.split(":/");
+        const variablesCopy = { ...variables };
+        const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
+          const paramName = matched.replace(/\W/g, "");
+          const value = variablesCopy[paramName];
+          delete variablesCopy[paramName];
+          return value || matched;
+        });
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        setLoading(true);
+        setError(void 0);
+        const res = await service_default(
+          path,
+          method || "POST",
+          variablesCopy,
+          {
+            returnStatus: true,
+            auth: auth.accessToken,
+            signal: abortControllerRef.current.signal
+          }
+        );
+        if (isSuccessStatus(res.status)) {
+          const responseData = extractResponseData(res.data, config2.dataPath);
+          setData(responseData);
+          setLoading(false);
+          return createSuccessResponse(responseData, res.status);
+        }
+        if (isAuthError(res.status)) {
+          app.clearAuth();
+        }
+        const errorMessage = extractErrorMessage(res);
+        setError(errorMessage);
+        setLoading(false);
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e) {
+        if (isAbortError2(e)) {
+          setLoading(false);
+          return createErrorResponse("Request cancelled", 0);
+        }
+        setLoading(false);
+        const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+        setError(errorMessage);
+        return createErrorResponse(errorMessage, 500);
+      }
+    },
+    [route, option, auth, app]
+  );
+  const cancel = useCallback4(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+  return [
+    mutate,
+    {
+      loading,
+      error,
+      data,
+      cancel
+    }
+  ];
+};
+var use_mutation_async_default = useMutationAsync;
+
+// src/utils/http-helpers.ts
+var createAbortController = () => {
+  return new AbortController();
+};
+var isAbortError3 = (error) => {
+  var _a, _b;
+  if (!error) return false;
+  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
+};
+var isCancelError = (error) => {
+  return isAbortError3(error);
+};
+var shouldRetry2 = (error) => {
+  var _a, _b;
+  if (isAbortError3(error)) {
+    return false;
+  }
+  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
+    return false;
+  }
+  return true;
+};
+var formatFormData2 = (data) => {
+  const formData = new FormData();
+  for (const key in data) {
+    if (data.hasOwnProperty(key)) {
+      const value = data[key];
+      if (value !== null && value !== void 0) {
+        formData.append(key, value);
+      }
+    }
+  }
+  return formData;
+};
+var formatUrlEncoded2 = (data) => {
+  const formBody = [];
+  for (const property in data) {
+    if (data.hasOwnProperty(property)) {
+      const value = data[property];
+      if (value !== null && value !== void 0) {
+        const encodedKey = encodeURIComponent(property);
+        const encodedValue = encodeURIComponent(value);
+        formBody.push(`${encodedKey}=${encodedValue}`);
+      }
+    }
+  }
+  return formBody.join("&");
+};
+var safeAbort = (controller) => {
+  if (controller && !controller.signal.aborted) {
+    controller.abort();
+  }
+};
+var createTimeoutController = (timeoutMs) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+  };
+  return { controller, cleanup };
+};
+var combineAbortSignals = (signals) => {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      break;
+    }
+    signal.addEventListener("abort", () => {
+      controller.abort();
+    }, { once: true });
+  }
+  return controller;
+};
 
 // src/hooks/utils/retry-manager.ts
 async function retryWithBackoff(fn, options) {
@@ -1710,11 +1779,11 @@ function getOfflineQueue() {
 }
 
 // src/hooks/utils/refetch-manager.ts
-import { useEffect as useEffect6, useRef as useRef5 } from "react";
+import { useEffect as useEffect7, useRef as useRef5 } from "react";
 import { AppState } from "react-native";
 function useRefetchOnFocus(enabled, refetch) {
   const appState = useRef5(AppState.currentState);
-  useEffect6(() => {
+  useEffect7(() => {
     if (!enabled) return;
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === "active") {
@@ -1730,7 +1799,7 @@ function useRefetchOnFocus(enabled, refetch) {
 function useRefetchOnReconnect(enabled, refetch) {
   const { connected } = useSocket();
   const prevConnected = useRef5(connected);
-  useEffect6(() => {
+  useEffect7(() => {
     if (enabled && connected && !prevConnected.current) {
       refetch();
     }
@@ -1738,7 +1807,7 @@ function useRefetchOnReconnect(enabled, refetch) {
   }, [connected, enabled, refetch]);
 }
 function useRefetchInterval(enabled, refetch, interval) {
-  useEffect6(() => {
+  useEffect7(() => {
     if (!enabled || interval <= 0) return;
     const timer = setInterval(() => {
       refetch();
@@ -1752,55 +1821,6 @@ function useRefetchInterval(enabled, refetch, interval) {
 // src/store/contexts/alpha-provider.tsx
 import { useMemo as useMemo4, useEffect as useEffect8 } from "react";
 import { Provider } from "react-redux";
-
-// src/store/contexts/config-context.tsx
-import { createContext as createContext3, useContext as useContext3, useMemo as useMemo3, useEffect as useEffect7 } from "react";
-import { jsx as jsx3 } from "react/jsx-runtime";
-var ConfigContext = createContext3(void 0);
-var ConfigProvider = ({ config: config2, children }) => {
-  var _a;
-  const mergedConfig = useMemo3(
-    () => ({
-      ...DEFAULT_CONFIG,
-      ...config2,
-      cache: {
-        ...DEFAULT_CONFIG.cache,
-        ...config2.cache
-      },
-      retry: {
-        ...DEFAULT_CONFIG.retry,
-        ...config2.retry
-      }
-    }),
-    [config2]
-  );
-  useEffect7(() => {
-    var _a2;
-    if ((_a2 = mergedConfig.cache) == null ? void 0 : _a2.maxSize) {
-      setMaxCacheSize(mergedConfig.cache.maxSize);
-    }
-  }, [(_a = mergedConfig.cache) == null ? void 0 : _a.maxSize]);
-  useEffect7(() => {
-    if (mergedConfig.debug) {
-      enableGlobalDebug();
-    } else {
-      disableGlobalDebug();
-    }
-  }, [mergedConfig.debug]);
-  useEffect7(() => {
-    setHttpConfig(mergedConfig);
-  }, [mergedConfig]);
-  const value = useMemo3(() => ({ config: mergedConfig }), [mergedConfig]);
-  return /* @__PURE__ */ jsx3(ConfigContext.Provider, { value, children });
-};
-function useAlphaConfig() {
-  const context = useContext3(ConfigContext);
-  if (!context) {
-    return DEFAULT_CONFIG;
-  }
-  return context.config;
-}
-var config_context_default = ConfigProvider;
 
 // src/store/create-store.ts
 init_storage();
@@ -1976,16 +1996,83 @@ var useAppSelector = useReduxSelector;
 var useAppDispatch = () => useReduxDispatch();
 
 // src/utils/money.ts
-function money(num, decimal) {
+function formatMoney(num, decimal) {
   if (num || num === 0) {
     return num.toFixed(decimal).replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
   }
   return "-.--";
 }
-var money_default = money;
+var money_default = formatMoney;
 
 // src/index.ts
 init_storage();
+
+// src/utils/getMime.ts
+function getMime(ext) {
+  const mimeTypes = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    bmp: "image/bmp",
+    tiff: "image/tiff",
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    txt: "text/plain",
+    csv: "text/csv",
+    xml: "application/xml",
+    html: "text/html",
+    json: "application/json",
+    mp4: "video/mp4",
+    avi: "video/x-msvideo",
+    mov: "video/quicktime",
+    mkv: "video/x-matroska",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    flac: "audio/flac",
+    aac: "audio/aac",
+    m4a: "audio/mp4",
+    zip: "application/zip",
+    rar: "application/vnd.rar"
+  };
+  return mimeTypes[ext.toLowerCase()] || "application/octet-stream";
+}
+
+// src/utils/capitalize.ts
+function capitalize(string) {
+  return string.replace(/(?:^|\s)\S/g, function(a) {
+    return a.toUpperCase();
+  });
+}
+
+// src/utils/toast.ts
+import SimpleToast from "react-native-simple-toast";
+var Toast = (message, duration) => {
+  setTimeout(() => {
+    SimpleToast.show(message, SimpleToast[duration || "LONG"]);
+  }, 100);
+};
+var toast_default = Toast;
+
+// src/utils/readFile.ts
+import RNFetchBlob from "react-native-blob-util";
+var readFile = async (path) => {
+  try {
+    return await RNFetchBlob.fs.readFile(path.replace("file://", ""), "base64");
+  } catch (error) {
+    console.error("Error reading file:", error);
+    return null;
+  }
+};
+var readFile_default = readFile;
+
+// src/index.ts
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -2002,10 +2089,12 @@ export {
   paths_default as PATHS,
   QueryDebugger,
   STATUS_CODES,
+  toast_default as Toast,
   config as alphaConfig,
   actions as appActions,
   canUseCache,
   cancelRequest,
+  capitalize,
   clearAllRequests,
   combineAbortSignals,
   createAbortController,
@@ -2026,6 +2115,7 @@ export {
   enableGlobalDebug,
   encrypt,
   extractErrorMessage,
+  extractResponseData,
   formatFormData2 as formatFormData,
   money_default as formatMoney,
   formatUrlEncoded2 as formatUrlEncoded,
@@ -2036,8 +2126,10 @@ export {
   getEncryptionConfig,
   getHttpConfig,
   getInFlightCount,
+  getMime,
   getOfflineQueue,
   getOrCreateRequest,
+  service_default as http,
   isAbortError3 as isAbortError,
   isAuthError,
   isCacheExpired,
@@ -2050,6 +2142,7 @@ export {
   isSuccessStatus,
   isValidEncryptionConfig,
   naira,
+  readFile_default as readFile,
   retryWithBackoff,
   retryWithJitter,
   safeAbort,

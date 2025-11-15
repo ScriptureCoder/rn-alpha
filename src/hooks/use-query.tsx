@@ -22,6 +22,8 @@ import {
   isCacheStale,
   getCacheData,
 } from "./utils/cache-helpers";
+import { extractResponseData } from "./utils/response-helpers";
+import { useAlphaConfig } from "../store/contexts/config-context";
 
 /**
  * Custom hook for data fetching with caching support
@@ -36,6 +38,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const cache = useCache();
   const { key, path, method } = cache.getContext(route, variables);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
+  const config = useAlphaConfig();
 
   const data = useSelector((state) => state.cache[key]);
   const thread = useSelector((state) => state.thread[key]);
@@ -179,11 +182,14 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           
           setThread(false, error);
 
-          if (isSuccessStatus(res.status) && res.data.data) {
-            if (onCompleted) {
-              onCompleted(res.data.data);
+          if (isSuccessStatus(res.status)) {
+            const responseData = extractResponseData(res.data, config.dataPath);
+            if (responseData) {
+              if (onCompleted) {
+                onCompleted(responseData);
+              }
+              cache.setCache(key, responseData);
             }
-            cache.setCache(key, res.data.data);
           } else if (isAuthError(res.status)) {
             // Auth error - clear authentication
             app.clearAuth();

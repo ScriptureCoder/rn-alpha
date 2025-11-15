@@ -14,6 +14,8 @@ import {
   createErrorResponse,
   createSuccessResponse,
 } from "./utils/error-handler";
+import { extractResponseData } from "./utils/response-helpers";
+import { useAlphaConfig } from "../store/contexts/config-context";
 
 /**
  * Options for async query
@@ -42,6 +44,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
   const { auth } = app;
   const { getContext } = useCache();
   const dispatch = useDispatch();
+  const config = useAlphaConfig();
 
   /**
    * Performs an async query and updates cache and loading state
@@ -104,8 +107,9 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
 
       if (isSuccessStatus(res.status)) {
         // Update cache with successful data
-        dispatch(actions.set({ key, value: res.data.data }));
-        return createSuccessResponse(res.data.data, res.status);
+        const responseData = extractResponseData(res.data, config.dataPath);
+        dispatch(actions.set({ key, value: responseData }));
+        return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {
         // Handle auth errors - clear authentication
         app.clearAuth();

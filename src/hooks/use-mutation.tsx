@@ -14,6 +14,8 @@ import {
   createSuccessResponse,
 } from "hooks/utils";
 import { ERROR_MESSAGES } from "./constants";
+import { extractResponseData } from "./utils/response-helpers";
+import { useAlphaConfig } from "../store/contexts/config-context";
 
 /**
  * Custom hook for data mutations (POST, PUT, DELETE operations)
@@ -32,6 +34,7 @@ const useMutation = <T = any,>(
   const app = useApp();
   const { auth } = app;
   const { getContext } = useCache();
+  const config = useAlphaConfig();
 
   // Store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -84,7 +87,7 @@ const useMutation = <T = any,>(
         );
 
         if (isSuccessStatus(res.status)) {
-          const responseData = res.data.data;
+          const responseData = extractResponseData(res.data, config.dataPath);
           setData(responseData);
           setLoading(false);
           return createSuccessResponse(responseData, res.status);

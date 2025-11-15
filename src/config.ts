@@ -32,6 +32,9 @@ export interface AlphaConfig {
     iv: string;  // Must be 16 characters
   };
   
+  // Response data path
+  dataPath?: string; // Default: "data" (means res.data.data), empty string for res.data
+  
   // Debug mode
   debug?: boolean;
 }
@@ -52,6 +55,7 @@ export const DEFAULT_CONFIG: AlphaConfig = {
     delay: 'exponential',
   },
   encryption: undefined, // No default - must be provided for security
+  dataPath: 'data', // Default to res.data.data for backward compatibility
   debug: false,
 };
 

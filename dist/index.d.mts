@@ -437,6 +437,7 @@ interface AlphaConfig {
         key: string;
         iv: string;
     };
+    dataPath?: string;
     debug?: boolean;
 }
 declare const DEFAULT_CONFIG: AlphaConfig;
@@ -474,6 +475,33 @@ declare function setHttpConfig(newConfig: AlphaConfig): void;
  * @returns Current Alpha configuration
  */
 declare function getHttpConfig(): AlphaConfig;
+/**
+ * Modern HTTP client with axios
+ * Supports multiple Content-Types, request cancellation, and better error handling
+ *
+ * @param path - API endpoint path
+ * @param method - HTTP method (GET, POST, PUT, DELETE, PATCH)
+ * @param data - Request data (body for POST/PUT/PATCH, query params for GET)
+ * @param options - Additional options (auth, contentType, signal, timeout, etc.)
+ * @returns Promise with standardized response format
+ *
+ * @example
+ * // JSON request (default)
+ * const response = await http('/users', 'POST', { name: 'John' });
+ *
+ * @example
+ * // URL-encoded request
+ * const response = await http('/login', 'POST', { email, password }, { contentType: 'urlencoded' });
+ *
+ * @example
+ * // With abort signal
+ * const controller = new AbortController();
+ * const response = await http('/data', 'GET', {}, { signal: controller.signal });
+ * // Later: controller.abort();
+ */
+declare function http<T = any>(path: string, method?: Method, data?: any, options?: HttpOptions): Promise<HttpResponse<T>>;
+declare function http<T = any>(path: string, method: Method, data: any, returnStatus: boolean, auth?: string, returnText?: boolean): Promise<HttpResponse<T>>;
+
 /**
  * Check if an error is an abort/cancel error
  */
@@ -649,6 +677,14 @@ declare const createTimeoutController: (timeoutMs: number) => {
  * await http('/api/data', 'GET', {}, { signal: combined.signal });
  */
 declare const combineAbortSignals: (signals: AbortSignal[]) => AbortController;
+
+/**
+ * Extracts data from API response based on configured data path
+ * @param response - The Axios response object (res.data)
+ * @param dataPath - The path to extract (e.g., "data" for res.data.data, "" for res.data)
+ * @returns The extracted data
+ */
+declare const extractResponseData: (response: any, dataPath?: string) => any;
 
 /**
  * Request Deduplication System
@@ -1114,7 +1150,7 @@ type StateFromReducer<TReducer extends (state: any, action: any) => any> = TRedu
 declare const useAppSelector: TypedUseSelectorHook<RootState>;
 declare const useAppDispatch: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
 
-declare function money(num: number, decimal: number): string;
+declare function formatMoney(num: number, decimal: number): string;
 
 /**
  * Encryption configuration interface
@@ -1212,4 +1248,12 @@ declare class Storage {
 }
 declare const _default: Storage;
 
-export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, formatFormData, money as formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getOfflineQueue, getOrCreateRequest, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+declare function getMime(ext: string): any;
+
+declare function capitalize(string: string): string;
+
+declare const Toast: (message: string, duration?: "SHORT" | "LONG") => void;
+
+declare const readFile: (path: string) => Promise<any>;
+
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };

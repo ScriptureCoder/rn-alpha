@@ -66,6 +66,9 @@ export {
   createSuccessResponse,
 } from './hooks/utils/error-handler';
 
+// Response helpers
+export { extractResponseData } from './hooks/utils/response-helpers';
+
 // NEW: Request deduplication
 export {
   getOrCreateRequest,
@@ -171,6 +174,16 @@ export {
 } from './utils/crypto';
 export type { EncryptionConfig } from './utils/crypto';
 export { default as storage } from './utils/storage';
+
+// Additional utility functions
+export { default as getMime } from './utils/getMime';
+export { default as capitalize } from './utils/capitalize';
+export { default as Toast } from './utils/toast';
+export { default as readFile } from './utils/readFile';
+
+// HTTP service (advanced use - direct access to http function)
+export { default as http } from './utils/service';
+export type { Method } from './utils/service';
 
 // NEW: Constants
 export {

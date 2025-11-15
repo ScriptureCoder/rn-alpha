@@ -174,6 +174,10 @@ Configure `rn-alpha` by passing a config object to `AlphaProvider`:
 
 - **`timeout`** (number) - Request timeout in milliseconds (default: 30000)
 - **`headers`** (object) - Default headers for all requests
+- **`dataPath`** (string) - Path to extract data from API responses (default: "data")
+  - Use `"data"` for responses like `{ data: { data: [...] } }` (default)
+  - Use `""` (empty string) for responses like `{ data: [...] }` directly
+  - Supports dot notation like `"data.items"` for `{ data: { items: [...] } }`
 
 #### Custom Routes
 
@@ -248,6 +252,7 @@ function App() {
           'X-App-Version': '1.0.0',
           'X-Platform': 'mobile',
         },
+        dataPath: 'data', // or "" for direct res.data access
         
         // Routes
         paths: apiRoutes,
@@ -321,6 +326,52 @@ import apiRoutes from './config/api-routes';
 </AlphaProvider>
 ```
 
+### Response Data Path Configuration
+
+By default, `rn-alpha` expects API responses in the format `{ data: { data: [...] } }` and extracts the nested `data` field. You can configure this behavior using the `dataPath` option.
+
+#### Standard Response (Default)
+
+```typescript
+// API returns: { data: { data: { id: 1, name: "John" } } }
+<AlphaProvider config={{ 
+  baseUrl: '...', 
+  dataPath: 'data' // default
+}}>
+```
+
+#### Direct Response
+
+```typescript
+// API returns: { data: { id: 1, name: "John" } }
+<AlphaProvider config={{ 
+  baseUrl: '...', 
+  dataPath: '' // empty string for direct access
+}}>
+```
+
+#### Nested Path
+
+```typescript
+// API returns: { data: { items: [...], meta: {...} } }
+<AlphaProvider config={{ 
+  baseUrl: '...', 
+  dataPath: 'data.items' // dot notation for nested paths
+}}>
+```
+
+#### Custom Extraction
+
+```typescript
+// API returns: { data: { result: { payload: [...] } } }
+<AlphaProvider config={{ 
+  baseUrl: '...', 
+  dataPath: 'data.result.payload'
+}}>
+```
+
+**Note**: All hooks (`useQuery`, `useMutation`, `useQueryAsync`, `useMutationAsync`) respect this global configuration, ensuring consistent data extraction across your entire application.
+
 ### Environment-Specific Configuration
 
 ```typescript
@@ -361,6 +412,7 @@ function MyComponent() {
 | Option | Default Value | Description |
 |--------|--------------|-------------|
 | `timeout` | 30000 | Request timeout (30s) |
+| `dataPath` | `'data'` | Response data extraction path |
 | `cache.ttl` | 300000 | Cache TTL (5 minutes) |
 | `cache.staleTime` | 0 | Stale time (always stale) |
 | `cache.maxSize` | 100 | Max cache entries |
