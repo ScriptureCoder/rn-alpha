@@ -1054,13 +1054,14 @@ var useQuery = (route, args) => {
     }
   }, [init == null ? void 0 : init.timestamp, key, dispatch, data == null ? void 0 : data.timestamp]);
   const setThread = useCallback2(
-    (loading, error) => {
+    (loading, error, status) => {
       dispatch(
         actions3.set({
           key,
           value: {
             loading,
-            error
+            error,
+            status
           }
         })
       );
@@ -1130,7 +1131,7 @@ var useQuery = (route, args) => {
             )
           );
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
-          setThread(false, error);
+          setThread(false, error, res.status);
           if (isSuccessStatus(res.status)) {
             const responseData = extractResponseData(res.data, config2.dataPath);
             if (responseData) {
@@ -1150,7 +1151,7 @@ var useQuery = (route, args) => {
           return;
         }
         const error = e.message || "Oops! an error occurred";
-        setThread(false, error);
+        setThread(false, error, 500);
         if (onError) {
           onError(error, 500);
         }
@@ -1262,6 +1263,7 @@ var useQuery = (route, args) => {
     data: data || init,
     loading: (thread == null ? void 0 : thread.loading) || false,
     error: thread == null ? void 0 : thread.error,
+    status: thread == null ? void 0 : thread.status,
     refetch,
     key,
     fetchMore,
@@ -1357,6 +1359,7 @@ var useMutation = (route, option) => {
   const [loading, setLoading] = useState3(false);
   const [error, setError] = useState3(void 0);
   const [data, setData] = useState3(void 0);
+  const [status, setStatus] = useState3(void 0);
   const app = useApp();
   const { auth } = app;
   const { getContext } = use_cache_default();
@@ -1382,6 +1385,7 @@ var useMutation = (route, option) => {
         abortControllerRef.current = new AbortController();
         setLoading(true);
         setError(void 0);
+        setStatus(void 0);
         const res = await service_default(
           path,
           method || "POST",
@@ -1396,6 +1400,7 @@ var useMutation = (route, option) => {
         if (isSuccessStatus(res.status)) {
           const responseData = extractResponseData(res.data, config2.dataPath);
           setData(responseData);
+          setStatus(res.status);
           setLoading(false);
           return createSuccessResponse(responseData, res.status);
         }
@@ -1405,16 +1410,19 @@ var useMutation = (route, option) => {
           app.clearAuth();
         }
         setError(errorMessage);
+        setStatus(res.status);
         setLoading(false);
         return createErrorResponse(errorMessage, res.status);
       } catch (e) {
         if (isAbortError2(e)) {
           setLoading(false);
+          setStatus(0);
           return createErrorResponse("Request cancelled", 0);
         }
         setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
         setError(errorMessage);
+        setStatus(500);
         return createErrorResponse(errorMessage, 500);
       }
     },
@@ -1432,6 +1440,7 @@ var useMutation = (route, option) => {
       loading,
       error,
       data,
+      status,
       cancel
     }
   ];
@@ -1445,6 +1454,7 @@ var useMutationAsync = (route, option) => {
   const [loading, setLoading] = useState4(false);
   const [error, setError] = useState4(void 0);
   const [data, setData] = useState4(void 0);
+  const [status, setStatus] = useState4(void 0);
   const app = useApp();
   const { auth } = app;
   const config2 = useAlphaConfig();
@@ -1476,6 +1486,7 @@ var useMutationAsync = (route, option) => {
         abortControllerRef.current = new AbortController();
         setLoading(true);
         setError(void 0);
+        setStatus(void 0);
         const res = await service_default(
           path,
           method || "POST",
@@ -1489,6 +1500,7 @@ var useMutationAsync = (route, option) => {
         if (isSuccessStatus(res.status)) {
           const responseData = extractResponseData(res.data, config2.dataPath);
           setData(responseData);
+          setStatus(res.status);
           setLoading(false);
           return createSuccessResponse(responseData, res.status);
         }
@@ -1497,16 +1509,19 @@ var useMutationAsync = (route, option) => {
         }
         const errorMessage = extractErrorMessage(res);
         setError(errorMessage);
+        setStatus(res.status);
         setLoading(false);
         return createErrorResponse(errorMessage, res.status);
       } catch (e) {
         if (isAbortError2(e)) {
           setLoading(false);
+          setStatus(0);
           return createErrorResponse("Request cancelled", 0);
         }
         setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
         setError(errorMessage);
+        setStatus(500);
         return createErrorResponse(errorMessage, 500);
       }
     },
@@ -1524,6 +1539,7 @@ var useMutationAsync = (route, option) => {
       loading,
       error,
       data,
+      status,
       cancel
     }
   ];

@@ -75,11 +75,8 @@ The package requires React ≥ 18 and React Native ≥ 0.73. Make sure your host
 These packages must be installed in your app:
 
 ```sh
-npm install @react-native-community/netinfo @react-navigation/native
-npm install @reduxjs/toolkit react-redux axios
-npm install country-code-emoji dayjs
-npm install react-native-blob-util react-native-crypto-js react-native-mmkv
-npm install react-native-simple-toast react-native-uuid
+yarn add @react-native-community/netinfo react-native-blob-util react-native-mmkv react-native-simple-toast
+npm install @react-native-community/netinfo react-native-blob-util react-native-mmkv react-native-simple-toast
 ```
 
 The versions listed in `package.json` are **minimum compatible versions**. You can use newer versions as long as they remain API-compatible.

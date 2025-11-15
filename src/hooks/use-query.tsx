@@ -85,16 +85,17 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   }, [init?.timestamp, key, dispatch, data?.timestamp]);
 
   /**
-   * Sets the loading/error state for this query
+   * Sets the loading/error/status state for this query
    */
   const setThread = useCallback(
-    (loading: boolean, error?: string) => {
+    (loading: boolean, error?: string, status?: number) => {
       dispatch(
         network.actions.set({
           key,
           value: {
             loading,
             error,
+            status,
           },
         })
       );
@@ -180,7 +181,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
             ? extractErrorMessage(res)
             : undefined;
           
-          setThread(false, error);
+          setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
             const responseData = extractResponseData(res.data, config.dataPath);
@@ -204,7 +205,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         }
         
         const error = e.message || "Oops! an error occurred";
-        setThread(false, error);
+        setThread(false, error, 500);
         if (onError) {
           onError(error, 500);
         }
@@ -354,6 +355,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
     data: data || init,
     loading: thread?.loading || false,
     error: thread?.error,
+    status: thread?.status,
     refetch,
     key,
     fetchMore,

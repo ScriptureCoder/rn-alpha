@@ -43,6 +43,7 @@ export interface QueryResult {
   data: any;
   loading: boolean;
   error: string | undefined;
+  status?: number;
   key: string;
   refetch: (variables?: Record<string, any>) => void;
   fetchMore: (
@@ -103,6 +104,7 @@ export type MutationResult<T = any> = [
     loading: boolean;
     error?: string;
     data?: T;
+    status?: number;
     cancel: () => void;
   }
 ];

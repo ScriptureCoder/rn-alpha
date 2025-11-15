@@ -6,7 +6,7 @@ const threadSlice = createSlice({
     name: 'thread',
     initialState,
     reducers: {
-        set(state, action: PayloadAction<{ key:string, value:{ loading:boolean, error?:string } }>) {
+        set(state, action: PayloadAction<{ key:string, value:{ loading:boolean, error?:string, status?:number } }>) {
             state[action.payload.key] = action.payload.value
         },
         remove(state, action: PayloadAction<string>) {

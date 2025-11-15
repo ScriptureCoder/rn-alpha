@@ -119,6 +119,7 @@ interface QueryResult {
     data: any;
     loading: boolean;
     error: string | undefined;
+    status?: number;
     key: string;
     refetch: (variables?: Record<string, any>) => void;
     fetchMore: (variables?: Record<string, any>, concat?: ConcatStrategy, paginationKey?: string) => Promise<{
@@ -167,6 +168,7 @@ type MutationResult<T = any> = [
         loading: boolean;
         error?: string;
         data?: T;
+        status?: number;
         cancel: () => void;
     }
 ];

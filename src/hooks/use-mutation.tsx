@@ -30,6 +30,7 @@ const useMutation = <T = any,>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [data, setData] = useState<T | undefined>(undefined);
+  const [status, setStatus] = useState<number | undefined>(undefined);
 
   const app = useApp();
   const { auth } = app;
@@ -73,6 +74,7 @@ const useMutation = <T = any,>(
 
         setLoading(true);
         setError(undefined);
+        setStatus(undefined);
 
         const res: any = await http(
           path,
@@ -89,6 +91,7 @@ const useMutation = <T = any,>(
         if (isSuccessStatus(res.status)) {
           const responseData = extractResponseData(res.data, config.dataPath);
           setData(responseData);
+          setStatus(res.status);
           setLoading(false);
           return createSuccessResponse(responseData, res.status);
         }
@@ -103,18 +106,21 @@ const useMutation = <T = any,>(
         }
 
         setError(errorMessage);
+        setStatus(res.status);
         setLoading(false);
         return createErrorResponse(errorMessage, res.status);
       } catch (e: any) {
         // Handle abort errors - don't set error state for cancellations
         if (isAbortError(e)) {
           setLoading(false);
+          setStatus(0);
           return createErrorResponse("Request cancelled", 0);
         }
 
         setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
         setError(errorMessage);
+        setStatus(500);
         return createErrorResponse(errorMessage, 500);
       }
     },
@@ -137,6 +143,7 @@ const useMutation = <T = any,>(
       loading,
       error,
       data,
+      status,
       cancel,
     }
   ];
