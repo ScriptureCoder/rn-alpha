@@ -254,7 +254,7 @@ async function http<T = any>(
       // For other methods, format body based on content type
       config.data = formatRequestData(data, contentType, method);
     }
-    console.log(config.params);
+    console.log(config);
     // Make the request
     const response: AxiosResponse = await axiosInstance.request(config);
 

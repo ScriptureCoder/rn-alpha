@@ -46,7 +46,7 @@ export function resolveEncryptionOptions(
 export function applyRequestEncryption(
   data: Record<string, any>,
   options: EncryptionOptions
-): Record<string, any> {
+): Record<string, any> | string {
   if (!options.enabled || !options.request) {
     return data;
   }
@@ -64,8 +64,7 @@ export function applyRequestEncryption(
     // Full body encryption
     if (options.request === 'full') {
       const jsonString = JSON.stringify(data);
-      const encrypted = encrypt(jsonString, config.key, config.iv);
-      return { encrypted };
+      return encrypt(jsonString, config.key, config.iv);
     }
 
     // Partial encryption - specific keys

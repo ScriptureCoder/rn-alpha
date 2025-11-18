@@ -227,7 +227,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     } else {
       config2.data = formatRequestData(data, contentType, method);
     }
-    console.log(config2.params);
+    console.log(config2);
     const response = await axiosInstance.request(config2);
     console.log(response);
     if (returnStatus) {
