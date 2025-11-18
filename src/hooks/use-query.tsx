@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useCallback } from "react";
 import http, { Method } from "../utils/service";
-import { useApp } from "../store/contexts/app-context";
+import { useApp } from "store/contexts/app-context";
 import useDispatch from "./use-dispatch";
 import useSelector from "./use-selector";
-import { actions } from "../store/reducers/cache-reducer";
+import { actions } from "store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import useCache from "./use-cache";
-import { useSocket } from "../store/contexts/socket-context";
-import { Route } from "../types";
+import { useSocket } from "store/contexts/socket-context";
+import { Route } from "types";
 import { QueryOptions, QueryResult } from "./types";
 import { NetworkPolicy, NETWORK_TIMEOUT } from "./constants";
 import {

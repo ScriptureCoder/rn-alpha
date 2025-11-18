@@ -23,5 +23,5 @@ export type DashboardStackList = {
 
 export type Weight = 'Regular'|'Bold'|'SemiBold'|'Light'|'Medium'|'ExtraLight'|'Italic'|'ExtraBold';
 
-export type Route = keyof typeof PATHS
+export type Route = keyof typeof PATHS | string
 export type Visibility = 'wallet'|'savings'|'investment'|'total'
