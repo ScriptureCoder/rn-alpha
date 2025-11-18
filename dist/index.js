@@ -325,6 +325,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       signal,
       timeout: timeout || 3e4
     };
+    console.log({ data });
     if (method === "GET" && data) {
       config2.params = data;
     } else {
@@ -1267,7 +1268,7 @@ function applyRequestEncryption(data, options) {
     if (options.request === "full") {
       const jsonString = JSON.stringify(data);
       const encrypted = encrypt(jsonString, config2.key, config2.iv);
-      return { encrypted };
+      return Object.keys(data).length > 0 ? encrypted : null;
     }
     if (Array.isArray(options.request)) {
       const result = { ...data };

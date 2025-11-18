@@ -246,6 +246,7 @@ async function http<T = any>(
       timeout: timeout || 30000,
     };
 
+    console.log({data});
     // Handle data based on method and content type
     if (method === 'GET' && data) {
       // For GET, data becomes query params

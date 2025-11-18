@@ -64,7 +64,8 @@ export function applyRequestEncryption(
     // Full body encryption
     if (options.request === 'full') {
       const jsonString = JSON.stringify(data);
-      return encrypt(jsonString, config.key, config.iv);
+      const encrypted = encrypt(jsonString, config.key, config.iv);
+      return Object.keys(data).length > 0 ? encrypted : null;
     }
 
     // Partial encryption - specific keys
