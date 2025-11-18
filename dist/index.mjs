@@ -187,9 +187,7 @@ var formatRequestData = (data, contentType, method) => {
 async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, legacyReturnText) {
   var _a, _b;
   let options;
-  let isLegacySignature = false;
   if (typeof optionsOrStatus === "boolean") {
-    isLegacySignature = true;
     options = {
       returnStatus: optionsOrStatus,
       auth: legacyAuth,
@@ -209,22 +207,10 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     returnText = false
   } = options;
   try {
-    const defaultHeaders = axiosInstance.defaults.headers.common || {};
-    const defaultHeadersObj = {};
-    if (defaultHeaders) {
-      Object.keys(defaultHeaders).forEach((key) => {
-        const value = defaultHeaders[key];
-        if (value !== void 0 && value !== null) {
-          defaultHeadersObj[key] = String(value);
-        }
-      });
-    }
     const headers = {
-      ...defaultHeadersObj
+      "Content-Type": getContentTypeHeader(contentType)
+      // 'Content-Type': "application/x-www-form-urlencoded",
     };
-    if (isLegacySignature || options.contentType !== void 0) {
-      headers["Content-Type"] = getContentTypeHeader(contentType);
-    }
     if (auth) {
       headers["Authorization"] = auth;
     }
@@ -241,7 +227,9 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     } else {
       config2.data = formatRequestData(data, contentType, method);
     }
+    console.log(config2.params);
     const response = await axiosInstance.request(config2);
+    console.log(response);
     if (returnStatus) {
       return {
         data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data,
@@ -1381,10 +1369,14 @@ var useQuery = (route, args) => {
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
           setThread(false, error, res.status);
           if (isSuccessStatus(res.status)) {
-            let responseData = extractResponseData(res.data, resolvedDataPath);
+            console.log(res.data, { resolvedDataPath });
+            let responseData = res.data;
+            console.log("first", responseData);
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
+            responseData = extractResponseData(responseData, resolvedDataPath);
+            console.log("second", responseData);
             if (responseData) {
               if (onCompleted) {
                 onCompleted(responseData);
@@ -1511,7 +1503,7 @@ var useQuery = (route, args) => {
     [key, cache]
   );
   return {
-    data: data || init,
+    data: (data == null ? void 0 : data.data) || init,
     loading: (thread == null ? void 0 : thread.loading) || false,
     error: thread == null ? void 0 : thread.error,
     status: thread == null ? void 0 : thread.status,

@@ -200,12 +200,16 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
-            let responseData = extractResponseData(res.data, resolvedDataPath);
-
+            console.log(res.data, {resolvedDataPath});
+            let responseData = res.data
+            console.log("first",responseData);
             // Apply response decryption if enabled
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
+
+            responseData = extractResponseData(responseData, resolvedDataPath);
+            console.log("second",responseData);
 
             if (responseData) {
               if (onCompleted) {
@@ -374,7 +378,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   );
 
   return {
-    data: data || init,
+    data: data?.data || init,
     loading: thread?.loading || false,
     error: thread?.error,
     status: thread?.status,

@@ -229,8 +229,8 @@ async function http<T = any>(
   try {
     // Prepare headers
     const headers: Record<string, string> = {
-      // 'Content-Type': getContentTypeHeader(contentType),
-      'Content-Type': "application/x-www-form-urlencoded",
+      'Content-Type': getContentTypeHeader(contentType),
+      // 'Content-Type': "application/x-www-form-urlencoded",
     };
 
     if (auth) {
@@ -254,10 +254,11 @@ async function http<T = any>(
       // For other methods, format body based on content type
       config.data = formatRequestData(data, contentType, method);
     }
-
+    console.log(config.params);
     // Make the request
     const response: AxiosResponse = await axiosInstance.request(config);
 
+    console.log(response);
     // Format response based on options
     if (returnStatus) {
       return {
