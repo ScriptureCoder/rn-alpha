@@ -16,6 +16,12 @@ import {
 } from "./utils/error-handler";
 import { extractResponseData } from "./utils/response-helpers";
 import { useAlphaConfig } from "../store/contexts/config-context";
+import {
+  resolveEncryptionOptions,
+  applyRequestEncryption,
+  applyResponseDecryption,
+  EncryptionOptions,
+} from "./utils/encryption-helpers";
 
 /**
  * Options for async query
@@ -23,6 +29,7 @@ import { useAlphaConfig } from "../store/contexts/config-context";
 interface UseQueryAsyncOptions {
   authToken?: string;
   signal?: AbortSignal;
+  encrypted?: boolean | EncryptionOptions;
 }
 
 /**
@@ -44,7 +51,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
   const { auth } = app;
   const { getContext } = useCache();
   const dispatch = useDispatch();
-  const config = useAlphaConfig();
+  const [config] = useAlphaConfig();
 
   /**
    * Performs an async query and updates cache and loading state
@@ -66,6 +73,9 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
         ? { authToken: options }
         : options || {};
     
+    // Resolve encryption options
+    const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config.defaultEncryption);
+    
     try {
       // Set loading state
       dispatch(
@@ -78,11 +88,16 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
         })
       );
 
+      // Apply request encryption if enabled
+      const requestData = encryptionOptions
+        ? applyRequestEncryption(variables, encryptionOptions)
+        : variables;
+
       // Perform the request
       const res: any = await http(
         path,
         (method as Method) || "GET",
-        variables,
+        requestData,
         {
           returnStatus: true,
           auth: opts.authToken || auth.accessToken,
@@ -107,7 +122,13 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
 
       if (isSuccessStatus(res.status)) {
         // Update cache with successful data
-        const responseData = extractResponseData(res.data, config.dataPath);
+        let responseData = extractResponseData(res.data, config.dataPath);
+        
+        // Apply response decryption if enabled
+        if (encryptionOptions && responseData) {
+          responseData = applyResponseDecryption(responseData, encryptionOptions);
+        }
+        
         dispatch(actions.set({ key, value: responseData }));
         return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {

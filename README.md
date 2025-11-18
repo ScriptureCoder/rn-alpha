@@ -387,20 +387,50 @@ export const alphaConfig = {
 };
 ```
 
-### Accessing Config
+### Accessing and Updating Config
 
-Use the `useAlphaConfig` hook:
+Use the `useAlphaConfig` hook to both read and update configuration dynamically:
 
 ```typescript
 import { useAlphaConfig } from '@scripturecoder/rn-alpha-hooks';
 
 function MyComponent() {
-  const config = useAlphaConfig();
+  // Returns tuple [config, setConfig] like useState
+  const [config, setConfig] = useAlphaConfig();
   
   console.log('Base URL:', config.baseUrl);
   console.log('Debug mode:', config.debug);
   
-  return <View>...</View>;
+  // Update config dynamically
+  const switchToProduction = () => {
+    setConfig({ 
+      baseUrl: 'https://api.example.com',
+      debug: false 
+    });
+  };
+  
+  return (
+    <View>
+      <Button title="Switch to Production" onPress={switchToProduction} />
+    </View>
+  );
+}
+
+// Read-only access (ignore setter)
+function DisplayConfig() {
+  const [config] = useAlphaConfig();
+  return <Text>{config.baseUrl}</Text>;
+}
+
+// Write-only access (ignore getter)
+function ConfigUpdater() {
+  const [, setConfig] = useAlphaConfig();
+  return (
+    <Button 
+      title="Reset" 
+      onPress={() => setConfig({ timeout: 30000 })} 
+    />
+  );
 }
 ```
 
@@ -1112,6 +1142,140 @@ function Component() {
 }
 ```
 
+### Dynamic Configuration Updates
+
+Update configuration on the fly from any child component using `useAlphaConfig()`:
+
+#### Basic Usage
+
+```typescript
+import { useAlphaConfig } from '@scripturecoder/rn-alpha-hooks';
+
+function SettingsScreen() {
+  const [config, setConfig] = useAlphaConfig();
+  
+  const switchEnvironment = (env: 'dev' | 'prod') => {
+    setConfig({
+      baseUrl: env === 'dev' 
+        ? 'https://dev-api.example.com'
+        : 'https://api.example.com',
+      debug: env === 'dev',
+    });
+  };
+  
+  return (
+    <View>
+      <Text>Current API: {config.baseUrl}</Text>
+      <Button title="Switch to Dev" onPress={() => switchEnvironment('dev')} />
+      <Button title="Switch to Prod" onPress={() => switchEnvironment('prod')} />
+    </View>
+  );
+}
+```
+
+#### Toggle Features
+
+```typescript
+function FeatureToggle() {
+  const [config, setConfig] = useAlphaConfig();
+  
+  const toggleEncryption = (enabled: boolean) => {
+    setConfig({
+      defaultEncryption: enabled ? {
+        request: ['password', 'pin'],
+        response: ['token', 'ssn'],
+      } : false,
+    });
+  };
+  
+  return (
+    <Switch 
+      value={config.defaultEncryption !== false}
+      onValueChange={toggleEncryption}
+    />
+  );
+}
+```
+
+#### Update Multiple Settings
+
+```typescript
+function ConfigPresets() {
+  const [, setConfig] = useAlphaConfig(); // Write-only
+  
+  const setupForDevelopment = () => {
+    setConfig({
+      baseUrl: 'https://dev-api.example.com',
+      debug: true,
+      timeout: 60000,
+      cache: { maxSize: 50 },
+      defaultEncryption: false,
+    });
+  };
+  
+  const setupForProduction = () => {
+    setConfig({
+      baseUrl: 'https://api.example.com',
+      debug: false,
+      timeout: 30000,
+      cache: { maxSize: 200 },
+      defaultEncryption: {
+        request: ['password'],
+        response: ['token'],
+      },
+    });
+  };
+  
+  return (
+    <>
+      <Button title="Dev Mode" onPress={setupForDevelopment} />
+      <Button title="Prod Mode" onPress={setupForProduction} />
+    </>
+  );
+}
+```
+
+#### Configuration Patterns
+
+```typescript
+// Pattern 1: Read and write
+const [config, setConfig] = useAlphaConfig();
+
+// Pattern 2: Read-only (ignore setter)
+const [config] = useAlphaConfig();
+
+// Pattern 3: Write-only (ignore getter)
+const [, setConfig] = useAlphaConfig();
+
+// Partial updates (deep merge for nested objects)
+setConfig({ timeout: 60000 }); // Only updates timeout
+
+// Nested object updates are deep merged
+setConfig({ 
+  cache: { maxSize: 200 } // Merges with existing cache config
+});
+```
+
+#### What Updates Immediately
+
+When you call `setConfig()`, these changes take effect immediately for new requests:
+
+✅ **Base URL** - Next requests use new URL  
+✅ **Timeout** - Applied to new requests  
+✅ **Headers** - Added to new requests  
+✅ **Encryption Keys** - Used for new encrypt/decrypt calls  
+✅ **Default Encryption** - Applied to new hook calls  
+✅ **Debug Mode** - Logging enabled/disabled  
+✅ **Cache Settings** - Max size and TTL updated  
+✅ **Network Policy** - New default for queries  
+
+⚠️ **Important Notes:**
+- In-flight requests continue with old config
+- Cached data is not automatically cleared
+- Store remains unchanged (for custom reducers)
+
+See `examples/dynamic-config.tsx` for complete examples.
+
 ### Network Policies
 
 Choose the right policy for your use case:
@@ -1239,9 +1403,9 @@ Debug logs include:
 
 ## Encryption & Security
 
-### Configuring Encryption
+The package provides powerful encryption capabilities for securing API requests and responses. You can encrypt entire request bodies or specific fields, and decrypt entire responses or specific fields.
 
-Set encryption keys via `AlphaProvider`:
+### Quick Start
 
 ```typescript
 <AlphaProvider
@@ -1251,23 +1415,250 @@ Set encryption keys via `AlphaProvider`:
       key: process.env.ENCRYPTION_KEY, // Must be 16 chars
       iv: process.env.ENCRYPTION_IV,   // Must be 16 chars
     },
+    // Optional: Set global encryption for all requests
+    defaultEncryption: {
+      request: ['password', 'pin'],  // Encrypt these fields globally
+      response: ['token', 'ssn'],    // Decrypt these fields globally
+    },
   }}
 >
   <App />
 </AlphaProvider>
 ```
 
-### Encryption Functions
+### Request/Response Encryption
+
+#### Full Body Encryption
+
+Encrypt the entire request body and decrypt the entire response:
+
+```typescript
+const [login, { loading, data }] = useMutation('login', {
+  encrypted: true, // Boolean shorthand for full encryption
+});
+
+await login({
+  email: 'user@example.com',
+  password: 'secret123',
+});
+// Sent as: { encrypted: "U2FsdGVkX1..." }
+```
+
+#### Partial Field Encryption
+
+Encrypt only specific object keys (most common use case):
+
+```typescript
+const [login, { loading }] = useMutation('login', {
+  encrypted: {
+    request: ['password'],  // Only encrypt password field
+    response: ['token'],    // Only decrypt token field
+  },
+});
+
+await login({
+  email: 'user@example.com',  // Sent as plain text
+  password: 'secret123',      // Encrypted
+  rememberMe: true,           // Sent as plain text
+});
+
+// Request sent:
+// {
+//   email: "user@example.com",
+//   password: "U2FsdGVkX1...",
+//   rememberMe: true
+// }
+```
+
+#### Multiple Field Encryption
+
+Encrypt multiple sensitive fields:
+
+```typescript
+const [processPayment, { loading }] = useMutation('payment', {
+  encrypted: {
+    request: ['cardNumber', 'cvv', 'pin'], // Encrypt card details
+    response: ['transactionKey'],          // Decrypt sensitive response
+  },
+});
+
+await processPayment({
+  cardNumber: '1234567890123456',  // Encrypted
+  cvv: '123',                      // Encrypted
+  pin: '1234',                     // Encrypted
+  amount: 100.00,                  // Plain text
+  currency: 'USD',                 // Plain text
+});
+```
+
+### Global Default Encryption
+
+Set encryption behavior for ALL requests globally, then override per-hook as needed:
+
+```typescript
+<AlphaProvider
+  config={{
+    encryption: {
+      key: '2vn!H3KXgX-TxvkD',
+      iv: '%x%97Uw@*A2xWaUJ',
+    },
+    // Apply to ALL hooks by default
+    defaultEncryption: {
+      request: ['password', 'pin', 'apiKey'],
+      response: ['token', 'ssn', 'data'],
+    },
+  }}
+>
+```
+
+Now all hooks automatically use this configuration:
+
+```typescript
+// Uses global encryption (password encrypted automatically)
+const [login] = useMutation('login');
+await login({ email: 'user@example.com', password: 'secret' });
+
+// Override for public endpoints
+const [publicQuery] = useQuery('publicData', {
+  encrypted: false, // Disable encryption for this query
+});
+
+// Override with different fields
+const [payment] = useMutation('payment', {
+  encrypted: {
+    request: ['cardNumber', 'cvv'], // Different fields
+  },
+});
+```
+
+### Global Encryption Options
+
+All global encryption strategies:
+
+```typescript
+// 1. Full encryption (boolean)
+defaultEncryption: true
+
+// 2. Full request & response (explicit)
+defaultEncryption: {
+  request: 'full',
+  response: 'full',
+}
+
+// 3. Partial fields (recommended)
+defaultEncryption: {
+  request: ['password', 'pin', 'apiKey'],
+  response: ['token', 'ssn', 'data'],
+}
+
+// 4. Mixed strategies
+defaultEncryption: {
+  request: 'full',              // Encrypt entire request
+  response: ['token', 'data'],  // Only decrypt specific fields
+}
+
+// 5. Request-only encryption
+defaultEncryption: {
+  request: ['password'],
+  // No response decryption
+}
+```
+
+### Encryption with Queries
+
+Works with all hooks:
+
+```typescript
+// useQuery
+const { data, loading } = useQuery('secureData', {
+  variables: { token: 'secret' },
+  encrypted: {
+    request: ['token'],
+    response: 'full',
+  },
+});
+
+// useQueryAsync
+const queryAsync = useQueryAsync();
+const result = await queryAsync(
+  'endpoint',
+  { apiKey: 'secret' },
+  {
+    encrypted: {
+      request: ['apiKey'],
+      response: ['data'],
+    },
+  }
+);
+```
+
+### Priority System
+
+Encryption configuration follows this priority order:
+
+1. **Hook-level** `encrypted` option (highest priority)
+2. **Global** `defaultEncryption` config
+3. **No encryption** (default)
+
+```typescript
+// Global: full encryption
+<AlphaProvider config={{ defaultEncryption: true }}>
+
+// Hook: disabled (overrides global)
+useQuery('data', { encrypted: false });
+
+// Hook: not specified (uses global)
+useQuery('other'); // Uses defaultEncryption: true
+```
+
+### Real-World Examples
+
+#### Banking Application
+
+```typescript
+const [transfer, { loading }] = useMutation('transfer', {
+  encrypted: {
+    request: ['accountNumber', 'pin', 'amount'],
+    response: ['transactionId', 'balance'],
+  },
+});
+```
+
+#### Healthcare Records
+
+```typescript
+const { data } = useQuery('patientRecords', {
+  variables: { patientId: '123' },
+  encrypted: {
+    response: ['ssn', 'diagnosis', 'medications'],
+  },
+});
+```
+
+#### E-commerce Checkout
+
+```typescript
+const [checkout] = useMutation('checkout', {
+  encrypted: {
+    request: ['cardNumber', 'cvv', 'expiryDate'],
+    response: ['paymentToken'],
+  },
+});
+```
+
+### Standalone Encryption Functions
+
+For manual encryption/decryption outside hooks:
 
 #### encrypt / decrypt
 
 ```typescript
 import { encrypt, decrypt } from '@scripturecoder/rn-alpha-hooks';
 
-// Encrypt data
+// Encrypt data (uses global config)
 const encrypted = encrypt('sensitive data');
 
-// Decrypt data
+// Decrypt data (uses global config)
 const decrypted = decrypt(encrypted);
 
 // With custom keys
@@ -1318,14 +1709,45 @@ if (isValidEncryptionConfig(config)) {
 }
 ```
 
+### TypeScript Support
+
+Full type safety with `EncryptionOptions`:
+
+```typescript
+import type { EncryptionOptions } from '@scripturecoder/rn-alpha-hooks';
+
+const options: EncryptionOptions = {
+  request: 'full',
+  response: ['token', 'data'],
+};
+
+useMutation('endpoint', { encrypted: options });
+```
+
+### Error Handling
+
+```typescript
+const [mutate] = useMutation('endpoint', { encrypted: true });
+
+try {
+  await mutate({ data: 'test' });
+} catch (error) {
+  if (error.message.includes('Encryption')) {
+    // Handle encryption configuration errors
+    console.error('Encryption keys not configured!');
+  }
+}
+```
+
 ### Security Best Practices
 
 1. **Never hardcode keys** - Use environment variables or secure storage
 2. **16 characters required** - Keys and IVs must be exactly 16 chars for AES-128
 3. **Store keys securely** - Use react-native-keychain or similar
 4. **Rotate keys** - Implement key rotation strategy
-5. **Different keys for different data** - Use per-call custom keys for sensitive operations
-6. **Never log keys** - Only log in development with warnings
+5. **Use HTTPS** - Encryption complements but doesn't replace secure transport
+6. **Encrypt only sensitive data** - Don't encrypt unnecessarily
+7. **Never log keys** - Only log in development with warnings
 
 Example secure setup:
 
@@ -1352,6 +1774,22 @@ async function loadEncryptionKeys() {
   }
 }
 ```
+
+### Encryption Options Reference
+
+```typescript
+interface EncryptionOptions {
+  enabled?: boolean;              // Enable/disable encryption
+  request?: 'full' | string[];   // Encryption strategy for request
+  response?: 'full' | string[];  // Decryption strategy for response
+}
+```
+
+| Value | Behavior |
+|-------|----------|
+| `'full'` | Encrypts entire body (request) or entire response |
+| `['field1', 'field2']` | Encrypts/decrypts only specified fields |
+| `false` or `undefined` | No encryption/decryption |
 
 ---
 
@@ -1857,7 +2295,7 @@ function CreatePost() {
 | `useApp` | Core app state | `{ auth, user, connected, setAuth, ... }` |
 | `useDispatch` | Redux dispatch | `dispatch` |
 | `useSelector` | Redux selector | `selectedValue` |
-| `useAlphaConfig` | Access config | `config` |
+| `useAlphaConfig` | Access/update config | `[config, setConfig]` |
 
 #### Components
 

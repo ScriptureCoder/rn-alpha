@@ -27,6 +27,7 @@ export type {
   MutationResult,
   CacheOperations,
   TimingInfo,
+  EncryptionOptions,
 } from './hooks/types';
 export type { NetworkPolicy, ConcatStrategy } from './hooks/constants';
 export type {

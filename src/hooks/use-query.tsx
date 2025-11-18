@@ -24,6 +24,11 @@ import {
 } from "./utils/cache-helpers";
 import { extractResponseData } from "./utils/response-helpers";
 import { useAlphaConfig } from "../store/contexts/config-context";
+import {
+  resolveEncryptionOptions,
+  applyRequestEncryption,
+  applyResponseDecryption,
+} from "./utils/encryption-helpers";
 
 /**
  * Custom hook for data fetching with caching support
@@ -32,13 +37,16 @@ import { useAlphaConfig } from "../store/contexts/config-context";
  * @returns QueryResult with data, loading state, and cache manipulation functions
  */
 const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
   const { key, path, method } = cache.getContext(route, variables);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
-  const config = useAlphaConfig();
+  const [config] = useAlphaConfig();
+  
+  // Resolve encryption options (hook option > global config)
+  const encryptionOptions = resolveEncryptionOptions(encrypted, config.defaultEncryption);
 
   const data = useSelector((state) => state.cache[key]);
   const thread = useSelector((state) => state.thread[key]);
@@ -163,12 +171,17 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           
           setThread(true);
           
+          // Apply request encryption if enabled
+          const requestData = encryptionOptions
+            ? applyRequestEncryption(fetchVariables, encryptionOptions)
+            : fetchVariables;
+          
           // Use request deduplication to prevent duplicate requests
           const res: any = await getOrCreateRequest(key, () =>
             http(
               path,
               (method as Method) || "GET",
-              fetchVariables,
+              requestData,
               {
                 returnStatus: true,
                 auth: auth.accessToken,
@@ -184,7 +197,13 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
-            const responseData = extractResponseData(res.data, config.dataPath);
+            let responseData = extractResponseData(res.data, config.dataPath);
+            
+            // Apply response decryption if enabled
+            if (encryptionOptions && responseData) {
+              responseData = applyResponseDecryption(responseData, encryptionOptions);
+            }
+            
             if (responseData) {
               if (onCompleted) {
                 onCompleted(responseData);
@@ -211,7 +230,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, config.dataPath]
   );
 
   /**

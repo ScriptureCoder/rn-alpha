@@ -32,6 +32,13 @@ export interface AlphaConfig {
     iv: string;  // Must be 16 characters
   };
   
+  // Default encryption behavior for all requests/responses
+  defaultEncryption?: boolean | {
+    enabled?: boolean;
+    request?: 'full' | string[];
+    response?: 'full' | string[];
+  };
+  
   // Response data path
   dataPath?: string; // Default: "data" (means res.data.data), empty string for res.data
   
@@ -55,6 +62,7 @@ export const DEFAULT_CONFIG: AlphaConfig = {
     delay: 'exponential',
   },
   encryption: undefined, // No default - must be provided for security
+  defaultEncryption: false, // No encryption by default
   dataPath: 'data', // Default to res.data.data for backward compatibility
   debug: false,
 };

@@ -16,6 +16,11 @@ import {
 import { ERROR_MESSAGES } from "./constants";
 import { extractResponseData } from "./utils/response-helpers";
 import { useAlphaConfig } from "../store/contexts/config-context";
+import {
+  resolveEncryptionOptions,
+  applyRequestEncryption,
+  applyResponseDecryption,
+} from "./utils/encryption-helpers";
 
 /**
  * Custom hook for async mutations with extended functionality
@@ -35,7 +40,10 @@ const useMutationAsync = <T = any,>(
   
   const app = useApp();
   const { auth } = app;
-  const config = useAlphaConfig();
+  const [config] = useAlphaConfig();
+  
+  // Resolve encryption options (hook option > global config)
+  const encryptionOptions = resolveEncryptionOptions(option?.encrypted, config.defaultEncryption);
   
   // Store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -85,10 +93,15 @@ const useMutationAsync = <T = any,>(
         setError(undefined);
         setStatus(undefined);
 
+        // Apply request encryption if enabled
+        const requestData = encryptionOptions
+          ? applyRequestEncryption(variablesCopy, encryptionOptions)
+          : variablesCopy;
+
         const res: any = await http(
           path,
           (method as any) || "POST",
-          variablesCopy,
+          requestData,
           {
             returnStatus: true,
             auth: auth.accessToken,
@@ -97,7 +110,13 @@ const useMutationAsync = <T = any,>(
         );
 
         if (isSuccessStatus(res.status)) {
-          const responseData = extractResponseData(res.data, config.dataPath);
+          let responseData = extractResponseData(res.data, config.dataPath);
+          
+          // Apply response decryption if enabled
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
+          
           setData(responseData);
           setStatus(res.status);
           setLoading(false);
@@ -130,7 +149,7 @@ const useMutationAsync = <T = any,>(
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app]
+    [route, option, auth, app, encryptionOptions, config.dataPath]
   );
   
   /**

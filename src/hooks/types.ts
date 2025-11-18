@@ -1,5 +1,6 @@
 import { NetworkPolicy, ConcatStrategy } from "./constants";
 import { Route } from "../types";
+import { EncryptionOptions } from "./utils/encryption-helpers";
 
 /**
  * Query hook options
@@ -23,6 +24,8 @@ export interface QueryOptions {
     delay: number | 'exponential';
     retryCondition?: (error: any) => boolean;
   };
+  // Encryption options
+  encrypted?: boolean | EncryptionOptions;
   // Debug options
   debug?: boolean;
 }
@@ -82,6 +85,8 @@ export interface MutationOptions {
     delay: number | 'exponential';
     retryCondition?: (error: any) => boolean;
   };
+  // Encryption options
+  encrypted?: boolean | EncryptionOptions;
   // NEW: Debug mode
   debug?: boolean;
 }
@@ -136,4 +141,7 @@ export interface CacheOperations {
   invalidateQueries: (pattern: string | RegExp) => void;
   invalidateAll: () => void;
 }
+
+// Re-export EncryptionOptions for convenience
+export type { EncryptionOptions };
 

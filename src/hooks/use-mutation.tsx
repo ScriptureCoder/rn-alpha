@@ -16,6 +16,11 @@ import {
 import { ERROR_MESSAGES } from "./constants";
 import { extractResponseData } from "./utils/response-helpers";
 import { useAlphaConfig } from "../store/contexts/config-context";
+import {
+  resolveEncryptionOptions,
+  applyRequestEncryption,
+  applyResponseDecryption,
+} from "./utils/encryption-helpers";
 
 /**
  * Custom hook for data mutations (POST, PUT, DELETE operations)
@@ -35,7 +40,10 @@ const useMutation = <T = any,>(
   const app = useApp();
   const { auth } = app;
   const { getContext } = useCache();
-  const config = useAlphaConfig();
+  const [config] = useAlphaConfig();
+  
+  // Resolve encryption options (hook option > global config)
+  const encryptionOptions = resolveEncryptionOptions(option?.encrypted, config.defaultEncryption);
 
   // Store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -76,10 +84,15 @@ const useMutation = <T = any,>(
         setError(undefined);
         setStatus(undefined);
 
+        // Apply request encryption if enabled
+        const requestData = encryptionOptions
+          ? applyRequestEncryption(variables, encryptionOptions)
+          : variables;
+
         const res: any = await http(
           path,
           (method as Method) || "POST",
-          variables,
+          requestData,
           {
             returnStatus: true,
             auth: auth?.accessToken,
@@ -89,7 +102,13 @@ const useMutation = <T = any,>(
         );
 
         if (isSuccessStatus(res.status)) {
-          const responseData = extractResponseData(res.data, config.dataPath);
+          let responseData = extractResponseData(res.data, config.dataPath);
+          
+          // Apply response decryption if enabled
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
+          
           setData(responseData);
           setStatus(res.status);
           setLoading(false);
@@ -124,7 +143,7 @@ const useMutation = <T = any,>(
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext]
+    [route, option, auth, app, getContext, encryptionOptions, config.dataPath]
   );
 
   /**

@@ -192,6 +192,8 @@ var DEFAULT_CONFIG = {
   },
   encryption: void 0,
   // No default - must be provided for security
+  defaultEncryption: false,
+  // No encryption by default
   dataPath: "data",
   // Default to res.data.data for backward compatibility
   debug: false
@@ -1058,63 +1060,291 @@ function createDebugger(enabled, prefix) {
   return new QueryDebugger(enabled != null ? enabled : globalDebugEnabled, prefix);
 }
 
+// src/utils/crypto.ts
+var import_react_native_crypto_js = __toESM(require("react-native-crypto-js"));
+var DEFAULT_CONFIG2 = {
+  key: "2vn!H3KXgX-TxvkD",
+  // Default for development
+  iv: "%x%97Uw@*A2xWaUJ"
+  // Default for development
+};
+var currentConfig2 = { ...DEFAULT_CONFIG2 };
+var hasWarnedAboutDefaultKeys = false;
+function setEncryptionConfig(config2) {
+  if (config2.key !== void 0 || config2.iv !== void 0) {
+    currentConfig2 = { ...currentConfig2, ...config2 };
+    hasWarnedAboutDefaultKeys = false;
+  }
+}
+function getEncryptionConfig() {
+  return { ...currentConfig2 };
+}
+function isValidEncryptionConfig(config2) {
+  if (!config2.key || !config2.iv) {
+    console.error("[rn-alpha-hooks] Encryption config must have both key and iv");
+    return false;
+  }
+  if (config2.key.length !== 16) {
+    console.error("[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128");
+    return false;
+  }
+  if (config2.iv.length !== 16) {
+    console.error("[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters");
+    return false;
+  }
+  return true;
+}
+function generateEncryptionConfig() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+  const generateRandomString = (length) => {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+  return {
+    key: generateRandomString(16),
+    iv: generateRandomString(16)
+  };
+}
+function encrypt(payload, customKey, customIv) {
+  const keyStr = customKey || currentConfig2.key;
+  const ivStr = customIv || currentConfig2.iv;
+  if (typeof __DEV__ !== "undefined" && __DEV__ && keyStr === DEFAULT_CONFIG2.key && !hasWarnedAboutDefaultKeys) {
+    console.warn(
+      "[rn-alpha-hooks] \u26A0\uFE0F Using default encryption keys! Set custom keys via AlphaProvider config.encryption or setEncryptionConfig() for production."
+    );
+    hasWarnedAboutDefaultKeys = true;
+  }
+  const key = import_react_native_crypto_js.default.enc.Utf8.parse(keyStr);
+  const iv = import_react_native_crypto_js.default.enc.Utf8.parse(ivStr);
+  return import_react_native_crypto_js.default.AES.encrypt(payload, key, {
+    iv,
+    mode: import_react_native_crypto_js.default.mode.CBC,
+    padding: import_react_native_crypto_js.default.pad.Pkcs7
+  }).toString();
+}
+function decrypt(response, customKey, customIv) {
+  const keyStr = customKey || currentConfig2.key;
+  const ivStr = customIv || currentConfig2.iv;
+  const key = import_react_native_crypto_js.default.enc.Utf8.parse(keyStr);
+  const iv = import_react_native_crypto_js.default.enc.Utf8.parse(ivStr);
+  const decrypted_response = import_react_native_crypto_js.default.AES.decrypt(
+    { ciphertext: import_react_native_crypto_js.default.enc.Base64.parse(response) },
+    key,
+    { iv }
+  );
+  return decrypted_response.toString(import_react_native_crypto_js.default.enc.Utf8);
+}
+
 // src/store/contexts/config-context.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var ConfigContext = (0, import_react4.createContext)(void 0);
-var ConfigProvider = ({ config: config2, children }) => {
+var ConfigProvider = ({ config: initialConfig, children }) => {
   var _a;
-  const mergedConfig = (0, import_react4.useMemo)(
-    () => ({
-      ...DEFAULT_CONFIG,
-      ...config2,
+  const [internalConfig, setInternalConfig] = (0, import_react4.useState)(() => ({
+    ...DEFAULT_CONFIG,
+    ...initialConfig,
+    cache: {
+      ...DEFAULT_CONFIG.cache,
+      ...initialConfig.cache
+    },
+    retry: {
+      ...DEFAULT_CONFIG.retry,
+      ...initialConfig.retry
+    }
+  }));
+  (0, import_react4.useEffect)(() => {
+    setInternalConfig((prev) => ({
+      ...prev,
+      ...initialConfig,
       cache: {
-        ...DEFAULT_CONFIG.cache,
-        ...config2.cache
+        ...prev.cache,
+        ...initialConfig.cache
       },
       retry: {
-        ...DEFAULT_CONFIG.retry,
-        ...config2.retry
+        ...prev.retry,
+        ...initialConfig.retry
       }
-    }),
-    [config2]
-  );
+    }));
+  }, [initialConfig]);
+  const updateConfig = (0, import_react4.useCallback)((newConfig) => {
+    setInternalConfig((prev) => {
+      const updated = {
+        ...prev,
+        ...newConfig
+      };
+      if (newConfig.cache !== void 0) {
+        updated.cache = {
+          ...prev.cache,
+          ...newConfig.cache
+        };
+      }
+      if (newConfig.retry !== void 0) {
+        updated.retry = {
+          ...prev.retry,
+          ...newConfig.retry
+        };
+      }
+      if (newConfig.encryption !== void 0) {
+        updated.encryption = newConfig.encryption;
+      }
+      if (newConfig.defaultEncryption !== void 0) {
+        updated.defaultEncryption = newConfig.defaultEncryption;
+      }
+      return updated;
+    });
+  }, []);
   (0, import_react4.useEffect)(() => {
     var _a2;
-    if ((_a2 = mergedConfig.cache) == null ? void 0 : _a2.maxSize) {
-      setMaxCacheSize(mergedConfig.cache.maxSize);
+    if ((_a2 = internalConfig.cache) == null ? void 0 : _a2.maxSize) {
+      setMaxCacheSize(internalConfig.cache.maxSize);
     }
-  }, [(_a = mergedConfig.cache) == null ? void 0 : _a.maxSize]);
+  }, [(_a = internalConfig.cache) == null ? void 0 : _a.maxSize]);
   (0, import_react4.useEffect)(() => {
-    if (mergedConfig.debug) {
+    if (internalConfig.debug) {
       enableGlobalDebug();
     } else {
       disableGlobalDebug();
     }
-  }, [mergedConfig.debug]);
+  }, [internalConfig.debug]);
   (0, import_react4.useEffect)(() => {
-    setHttpConfig(mergedConfig);
-  }, [mergedConfig]);
-  const value = (0, import_react4.useMemo)(() => ({ config: mergedConfig }), [mergedConfig]);
+    setHttpConfig(internalConfig);
+  }, [internalConfig]);
+  (0, import_react4.useEffect)(() => {
+    if (internalConfig.encryption) {
+      setEncryptionConfig(internalConfig.encryption);
+    }
+  }, [internalConfig.encryption]);
+  const value = (0, import_react4.useMemo)(
+    () => ({ config: internalConfig, updateConfig }),
+    [internalConfig, updateConfig]
+  );
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ConfigContext.Provider, { value, children });
 };
 function useAlphaConfig() {
   const context = (0, import_react4.useContext)(ConfigContext);
   if (!context) {
-    return DEFAULT_CONFIG;
+    const noopSetter = () => {
+      console.warn("[rn-alpha-hooks] useAlphaConfig: Cannot update config outside AlphaProvider");
+    };
+    return [DEFAULT_CONFIG, noopSetter];
   }
-  return context.config;
+  return [context.config, context.updateConfig];
 }
 var config_context_default = ConfigProvider;
 
+// src/hooks/utils/encryption-helpers.ts
+function resolveEncryptionOptions(hookOption, globalDefault) {
+  if (hookOption !== void 0) {
+    if (hookOption === false) return null;
+    if (hookOption === true) return { enabled: true, request: "full", response: "full" };
+    return { enabled: true, ...hookOption };
+  }
+  if (globalDefault !== void 0) {
+    if (globalDefault === false) return null;
+    if (globalDefault === true) return { enabled: true, request: "full", response: "full" };
+    return { enabled: true, ...globalDefault };
+  }
+  return null;
+}
+function applyRequestEncryption(data, options) {
+  if (!options.enabled || !options.request) {
+    return data;
+  }
+  const config2 = getEncryptionConfig();
+  if (!isValidEncryptionConfig(config2)) {
+    throw new Error(
+      "Encryption is enabled but encryption keys are not configured. Please set encryption keys via AlphaConfig or setEncryptionConfig()."
+    );
+  }
+  try {
+    if (options.request === "full") {
+      const jsonString = JSON.stringify(data);
+      const encrypted = encrypt(jsonString, config2.key, config2.iv);
+      return { encrypted };
+    }
+    if (Array.isArray(options.request)) {
+      const result = { ...data };
+      for (const key of options.request) {
+        if (key in data) {
+          const value = data[key];
+          const valueString = typeof value === "string" ? value : JSON.stringify(value);
+          result[key] = encrypt(valueString, config2.key, config2.iv);
+        }
+      }
+      return result;
+    }
+    return data;
+  } catch (error) {
+    throw new Error(`Request encryption failed: ${error.message}`);
+  }
+}
+function applyResponseDecryption(data, options) {
+  if (!options.enabled || !options.response) {
+    return data;
+  }
+  const config2 = getEncryptionConfig();
+  if (!isValidEncryptionConfig(config2)) {
+    throw new Error(
+      "Decryption is enabled but encryption keys are not configured. Please set encryption keys via AlphaConfig or setEncryptionConfig()."
+    );
+  }
+  try {
+    if (options.response === "full") {
+      if (typeof data === "string") {
+        const decrypted = decrypt(data, config2.key, config2.iv);
+        try {
+          return JSON.parse(decrypted);
+        } catch {
+          return decrypted;
+        }
+      }
+      if (data && typeof data === "object" && "encrypted" in data) {
+        const decrypted = decrypt(data.encrypted, config2.key, config2.iv);
+        try {
+          return JSON.parse(decrypted);
+        } catch {
+          return decrypted;
+        }
+      }
+      return data;
+    }
+    if (Array.isArray(options.response) && data && typeof data === "object") {
+      const result = { ...data };
+      for (const key of options.response) {
+        if (key in data && typeof data[key] === "string") {
+          try {
+            const decrypted = decrypt(data[key], config2.key, config2.iv);
+            try {
+              result[key] = JSON.parse(decrypted);
+            } catch {
+              result[key] = decrypted;
+            }
+          } catch (error) {
+            console.warn(`Failed to decrypt key '${key}':`, error.message);
+          }
+        }
+      }
+      return result;
+    }
+    return data;
+  } catch (error) {
+    throw new Error(`Response decryption failed: ${error.message}`);
+  }
+}
+
 // src/hooks/use-query.tsx
 var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
   const { key, path, method } = cache.getContext(route, variables);
   const policy = networkPolicy || "cache-first";
-  const config2 = useAlphaConfig();
+  const [config2] = useAlphaConfig();
+  const encryptionOptions = resolveEncryptionOptions(encrypted, config2.defaultEncryption);
   const data = use_selector_default((state) => state.cache[key]);
   const thread = use_selector_default((state) => state.thread[key]);
   const dispatch = use_dispatch_default();
@@ -1209,12 +1439,13 @@ var useQuery = (route, args) => {
           }
           abortControllerRef.current = new AbortController();
           setThread(true);
+          const requestData = encryptionOptions ? applyRequestEncryption(fetchVariables, encryptionOptions) : fetchVariables;
           const res = await getOrCreateRequest(
             key,
             () => service_default(
               path,
               method || "GET",
-              fetchVariables,
+              requestData,
               {
                 returnStatus: true,
                 auth: auth.accessToken,
@@ -1225,7 +1456,10 @@ var useQuery = (route, args) => {
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
           setThread(false, error, res.status);
           if (isSuccessStatus(res.status)) {
-            const responseData = extractResponseData(res.data, config2.dataPath);
+            let responseData = extractResponseData(res.data, config2.dataPath);
+            if (encryptionOptions && responseData) {
+              responseData = applyResponseDecryption(responseData, encryptionOptions);
+            }
             if (responseData) {
               if (onCompleted) {
                 onCompleted(responseData);
@@ -1249,7 +1483,7 @@ var useQuery = (route, args) => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, config2.dataPath]
   );
   const refetch = (0, import_react5.useCallback)(
     (refetchVariables) => {
@@ -1372,10 +1606,11 @@ var useQueryAsync = () => {
   const { auth } = app;
   const { getContext } = use_cache_default();
   const dispatch = use_dispatch_default();
-  const config2 = useAlphaConfig();
+  const [config2] = useAlphaConfig();
   return async (route, variables = {}, options) => {
     const { key, method, path } = getContext(route, variables);
     const opts = typeof options === "string" ? { authToken: options } : options || {};
+    const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
     try {
       dispatch(
         actions3.set({
@@ -1386,10 +1621,11 @@ var useQueryAsync = () => {
           }
         })
       );
+      const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
       const res = await service_default(
         path,
         method || "GET",
-        variables,
+        requestData,
         {
           returnStatus: true,
           auth: opts.authToken || auth.accessToken,
@@ -1407,7 +1643,10 @@ var useQueryAsync = () => {
         })
       );
       if (isSuccessStatus(res.status)) {
-        const responseData = extractResponseData(res.data, config2.dataPath);
+        let responseData = extractResponseData(res.data, config2.dataPath);
+        if (encryptionOptions && responseData) {
+          responseData = applyResponseDecryption(responseData, encryptionOptions);
+        }
         dispatch(actions2.set({ key, value: responseData }));
         return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {
@@ -1455,7 +1694,8 @@ var useMutation = (route, option) => {
   const app = useApp();
   const { auth } = app;
   const { getContext } = use_cache_default();
-  const config2 = useAlphaConfig();
+  const [config2] = useAlphaConfig();
+  const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const abortControllerRef = (0, import_react6.useRef)(null);
   (0, import_react6.useEffect)(() => {
     return () => {
@@ -1478,10 +1718,11 @@ var useMutation = (route, option) => {
         setLoading(true);
         setError(void 0);
         setStatus(void 0);
+        const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
         const res = await service_default(
           path,
           method || "POST",
-          variables,
+          requestData,
           {
             returnStatus: true,
             auth: auth == null ? void 0 : auth.accessToken,
@@ -1490,7 +1731,10 @@ var useMutation = (route, option) => {
           }
         );
         if (isSuccessStatus(res.status)) {
-          const responseData = extractResponseData(res.data, config2.dataPath);
+          let responseData = extractResponseData(res.data, config2.dataPath);
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
           setData(responseData);
           setStatus(res.status);
           setLoading(false);
@@ -1518,7 +1762,7 @@ var useMutation = (route, option) => {
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext]
+    [route, option, auth, app, getContext, encryptionOptions, config2.dataPath]
   );
   const cancel = (0, import_react6.useCallback)(() => {
     if (abortControllerRef.current) {
@@ -1549,7 +1793,8 @@ var useMutationAsync = (route, option) => {
   const [status, setStatus] = (0, import_react7.useState)(void 0);
   const app = useApp();
   const { auth } = app;
-  const config2 = useAlphaConfig();
+  const [config2] = useAlphaConfig();
+  const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const abortControllerRef = (0, import_react7.useRef)(null);
   (0, import_react7.useEffect)(() => {
     return () => {
@@ -1579,10 +1824,11 @@ var useMutationAsync = (route, option) => {
         setLoading(true);
         setError(void 0);
         setStatus(void 0);
+        const requestData = encryptionOptions ? applyRequestEncryption(variablesCopy, encryptionOptions) : variablesCopy;
         const res = await service_default(
           path,
           method || "POST",
-          variablesCopy,
+          requestData,
           {
             returnStatus: true,
             auth: auth.accessToken,
@@ -1590,7 +1836,10 @@ var useMutationAsync = (route, option) => {
           }
         );
         if (isSuccessStatus(res.status)) {
-          const responseData = extractResponseData(res.data, config2.dataPath);
+          let responseData = extractResponseData(res.data, config2.dataPath);
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
           setData(responseData);
           setStatus(res.status);
           setLoading(false);
@@ -1617,7 +1866,7 @@ var useMutationAsync = (route, option) => {
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app]
+    [route, option, auth, app, encryptionOptions, config2.dataPath]
   );
   const cancel = (0, import_react7.useCallback)(() => {
     if (abortControllerRef.current) {
@@ -1982,84 +2231,6 @@ function createAlphaStore(customReducers, options = {}) {
   return store;
 }
 var defaultStore = createAlphaStore();
-
-// src/utils/crypto.ts
-var import_react_native_crypto_js = __toESM(require("react-native-crypto-js"));
-var DEFAULT_CONFIG2 = {
-  key: "2vn!H3KXgX-TxvkD",
-  // Default for development
-  iv: "%x%97Uw@*A2xWaUJ"
-  // Default for development
-};
-var currentConfig2 = { ...DEFAULT_CONFIG2 };
-var hasWarnedAboutDefaultKeys = false;
-function setEncryptionConfig(config2) {
-  if (config2.key !== void 0 || config2.iv !== void 0) {
-    currentConfig2 = { ...currentConfig2, ...config2 };
-    hasWarnedAboutDefaultKeys = false;
-  }
-}
-function getEncryptionConfig() {
-  return { ...currentConfig2 };
-}
-function isValidEncryptionConfig(config2) {
-  if (!config2.key || !config2.iv) {
-    console.error("[rn-alpha-hooks] Encryption config must have both key and iv");
-    return false;
-  }
-  if (config2.key.length !== 16) {
-    console.error("[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128");
-    return false;
-  }
-  if (config2.iv.length !== 16) {
-    console.error("[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters");
-    return false;
-  }
-  return true;
-}
-function generateEncryptionConfig() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
-  const generateRandomString = (length) => {
-    let result = "";
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-  return {
-    key: generateRandomString(16),
-    iv: generateRandomString(16)
-  };
-}
-function encrypt(payload, customKey, customIv) {
-  const keyStr = customKey || currentConfig2.key;
-  const ivStr = customIv || currentConfig2.iv;
-  if (typeof __DEV__ !== "undefined" && __DEV__ && keyStr === DEFAULT_CONFIG2.key && !hasWarnedAboutDefaultKeys) {
-    console.warn(
-      "[rn-alpha-hooks] \u26A0\uFE0F Using default encryption keys! Set custom keys via AlphaProvider config.encryption or setEncryptionConfig() for production."
-    );
-    hasWarnedAboutDefaultKeys = true;
-  }
-  const key = import_react_native_crypto_js.default.enc.Utf8.parse(keyStr);
-  const iv = import_react_native_crypto_js.default.enc.Utf8.parse(ivStr);
-  return import_react_native_crypto_js.default.AES.encrypt(payload, key, {
-    iv,
-    mode: import_react_native_crypto_js.default.mode.CBC,
-    padding: import_react_native_crypto_js.default.pad.Pkcs7
-  }).toString();
-}
-function decrypt(response, customKey, customIv) {
-  const keyStr = customKey || currentConfig2.key;
-  const ivStr = customIv || currentConfig2.iv;
-  const key = import_react_native_crypto_js.default.enc.Utf8.parse(keyStr);
-  const iv = import_react_native_crypto_js.default.enc.Utf8.parse(ivStr);
-  const decrypted_response = import_react_native_crypto_js.default.AES.decrypt(
-    { ciphertext: import_react_native_crypto_js.default.enc.Base64.parse(response) },
-    key,
-    { iv }
-  );
-  return decrypted_response.toString(import_react_native_crypto_js.default.enc.Utf8);
-}
 
 // src/store/contexts/alpha-provider.tsx
 var import_jsx_runtime4 = require("react/jsx-runtime");

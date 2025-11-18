@@ -84,6 +84,15 @@ type NetworkPolicy = "network-and-cache" | "cache-only" | "network-only" | "cach
 type ConcatStrategy = "start" | "end" | "pagination";
 
 /**
+ * Encryption options for requests and responses
+ */
+interface EncryptionOptions {
+    enabled?: boolean;
+    request?: 'full' | string[];
+    response?: 'full' | string[];
+}
+
+/**
  * Query hook options
  */
 interface QueryOptions {
@@ -102,6 +111,7 @@ interface QueryOptions {
         delay: number | 'exponential';
         retryCondition?: (error: any) => boolean;
     };
+    encrypted?: boolean | EncryptionOptions;
     debug?: boolean;
 }
 /**
@@ -149,6 +159,7 @@ interface MutationOptions {
         delay: number | 'exponential';
         retryCondition?: (error: any) => boolean;
     };
+    encrypted?: boolean | EncryptionOptions;
     debug?: boolean;
 }
 /**
@@ -213,6 +224,7 @@ declare const useQuery: (route: Route, args?: QueryOptions) => QueryResult;
 interface UseQueryAsyncOptions {
     authToken?: string;
     signal?: AbortSignal;
+    encrypted?: boolean | EncryptionOptions;
 }
 /**
  * Hook return type - a function that performs async queries
@@ -438,6 +450,11 @@ interface AlphaConfig {
     encryption?: {
         key: string;
         iv: string;
+    };
+    defaultEncryption?: boolean | {
+        enabled?: boolean;
+        request?: 'full' | string[];
+        response?: 'full' | string[];
     };
     dataPath?: string;
     debug?: boolean;
@@ -1036,10 +1053,25 @@ interface AlphaProviderProps {
 declare const AlphaProvider: React.FC<AlphaProviderProps>;
 
 /**
- * Hook to access Alpha configuration
- * @returns Current Alpha configuration
+ * Hook to access and update Alpha configuration
+ * Returns a tuple [config, setConfig] similar to useState
+ *
+ * @example
+ * ```typescript
+ * // Read and write
+ * const [config, setConfig] = useAlphaConfig();
+ * setConfig({ baseUrl: 'https://new-api.com' });
+ *
+ * // Read only
+ * const [config] = useAlphaConfig();
+ *
+ * // Write only
+ * const [, setConfig] = useAlphaConfig();
+ * ```
+ *
+ * @returns Tuple of [config, updateConfig function]
  */
-declare function useAlphaConfig(): AlphaConfig;
+declare function useAlphaConfig(): [AlphaConfig, (config: Partial<AlphaConfig>) => void];
 
 /**
  * Creates a typed selector hook for your app's complete state
@@ -1258,4 +1290,4 @@ declare const Toast: (message: string, duration?: "SHORT" | "LONG") => void;
 
 declare const readFile: (path: string) => Promise<any>;
 
-export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type EncryptionOptions, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
