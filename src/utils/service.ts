@@ -157,21 +157,21 @@ const formatRequestData = (
 /**
  * Modern HTTP client with axios
  * Supports multiple Content-Types, request cancellation, and better error handling
- * 
+ *
  * @param path - API endpoint path
  * @param method - HTTP method (GET, POST, PUT, DELETE, PATCH)
  * @param data - Request data (body for POST/PUT/PATCH, query params for GET)
  * @param options - Additional options (auth, contentType, signal, timeout, etc.)
  * @returns Promise with standardized response format
- * 
+ *
  * @example
  * // JSON request (default)
  * const response = await http('/users', 'POST', { name: 'John' });
- * 
+ *
  * @example
  * // URL-encoded request
  * const response = await http('/login', 'POST', { email, password }, { contentType: 'urlencoded' });
- * 
+ *
  * @example
  * // With abort signal
  * const controller = new AbortController();
@@ -233,7 +233,7 @@ async function http<T = any>(
     };
 
     if (auth) {
-      headers['Auth_IDToken'] = auth;
+      headers['Authorization'] = auth;
     }
 
     // Prepare request config

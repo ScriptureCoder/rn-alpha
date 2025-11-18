@@ -1,6 +1,6 @@
 {
   "name": "@scripturecoder/rn-alpha-hooks",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Flexible React Native hooks, extensible store, and utilities with TypeScript support.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

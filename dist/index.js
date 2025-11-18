@@ -314,7 +314,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       "Content-Type": getContentTypeHeader(contentType)
     };
     if (auth) {
-      headers["Auth_IDToken"] = auth;
+      headers["Authorization"] = auth;
     }
     const config2 = {
       method,
