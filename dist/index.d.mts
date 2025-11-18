@@ -36,7 +36,7 @@ type DashboardStackList = {
     dashboard: undefined;
 };
 type Weight = 'Regular' | 'Bold' | 'SemiBold' | 'Light' | 'Medium' | 'ExtraLight' | 'Italic' | 'ExtraBold';
-type Route = keyof typeof PATHS;
+type Route = keyof typeof PATHS | string;
 type Visibility = 'wallet' | 'savings' | 'investment' | 'total';
 
 /**

@@ -200,16 +200,13 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
-            console.log(res.data, {resolvedDataPath});
             let responseData = res.data
-            console.log("first",responseData);
             // Apply response decryption if enabled
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
 
             responseData = extractResponseData(responseData, resolvedDataPath);
-            console.log("second",responseData);
 
             if (responseData) {
               if (onCompleted) {
