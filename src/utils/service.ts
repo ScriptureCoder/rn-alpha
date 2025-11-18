@@ -229,7 +229,8 @@ async function http<T = any>(
   try {
     // Prepare headers
     const headers: Record<string, string> = {
-      'Content-Type': getContentTypeHeader(contentType),
+      // 'Content-Type': getContentTypeHeader(contentType),
+      'Content-Type': "application/x-www-form-urlencoded",
     };
 
     if (auth) {

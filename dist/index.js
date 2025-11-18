@@ -290,7 +290,9 @@ var formatRequestData = (data, contentType, method) => {
 async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, legacyReturnText) {
   var _a, _b;
   let options;
+  let isLegacySignature = false;
   if (typeof optionsOrStatus === "boolean") {
+    isLegacySignature = true;
     options = {
       returnStatus: optionsOrStatus,
       auth: legacyAuth,
@@ -310,12 +312,26 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     returnText = false
   } = options;
   try {
+    const defaultHeaders = axiosInstance.defaults.headers.common || {};
+    const defaultHeadersObj = {};
+    if (defaultHeaders) {
+      Object.keys(defaultHeaders).forEach((key) => {
+        const value = defaultHeaders[key];
+        if (value !== void 0 && value !== null) {
+          defaultHeadersObj[key] = String(value);
+        }
+      });
+    }
     const headers = {
-      "Content-Type": getContentTypeHeader(contentType)
+      ...defaultHeadersObj
     };
+    if (isLegacySignature || options.contentType !== void 0) {
+      headers["Content-Type"] = getContentTypeHeader(contentType);
+    }
     if (auth) {
       headers["Authorization"] = auth;
     }
+    console.log(headers, method, path);
     const config2 = {
       method,
       url: path,
