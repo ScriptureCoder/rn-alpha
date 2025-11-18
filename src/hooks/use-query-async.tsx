@@ -67,19 +67,19 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
     options?: UseQueryAsyncOptions | string
   ): Promise<MutationResponse> => {
     const { key, method, path } = getContext(route, variables);
-    
+
     // Handle backward compatibility (authToken as string)
-    const opts: UseQueryAsyncOptions = 
-      typeof options === 'string' 
+    const opts: UseQueryAsyncOptions =
+      typeof options === 'string'
         ? { authToken: options }
         : options || {};
-    
+
     // Resolve encryption options
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config.defaultEncryption);
-    
+
     // Resolve dataPath (option > global config)
     const resolvedDataPath = opts.dataPath !== undefined ? opts.dataPath : config.dataPath;
-    
+
     try {
       // Set loading state
       dispatch(
@@ -125,14 +125,15 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
       );
 
       if (isSuccessStatus(res.status)) {
-        // Update cache with successful data
-        let responseData = extractResponseData(res.data, resolvedDataPath);
-        
+
+        let responseData = res.data
         // Apply response decryption if enabled
         if (encryptionOptions && responseData) {
           responseData = applyResponseDecryption(responseData, encryptionOptions);
         }
-        
+
+        responseData = extractResponseData(responseData, resolvedDataPath);
+
         dispatch(actions.set({ key, value: responseData }));
         return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {
@@ -140,7 +141,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
         app.clearAuth();
         return createErrorResponse(error || "Unauthorized", res.status);
       }
-      
+
       return createErrorResponse(error || "Request failed", res.status);
     } catch (e: any) {
       // Handle abort errors differently - don't update state
@@ -156,9 +157,9 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
         );
         return createErrorResponse("Request cancelled", 0);
       }
-      
+
       const error = e.message || "Oops! an error occurred";
-      
+
       // Update error state
       dispatch(
         network.actions.set({
@@ -169,7 +170,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
           },
         })
       );
-      
+
       return createErrorResponse(error, 500);
     }
   };

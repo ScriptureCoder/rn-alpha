@@ -1369,14 +1369,11 @@ var useQuery = (route, args) => {
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
           setThread(false, error, res.status);
           if (isSuccessStatus(res.status)) {
-            console.log(res.data, { resolvedDataPath });
             let responseData = res.data;
-            console.log("first", responseData);
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
             responseData = extractResponseData(responseData, resolvedDataPath);
-            console.log("second", responseData);
             if (responseData) {
               if (onCompleted) {
                 onCompleted(responseData);
@@ -1561,10 +1558,11 @@ var useQueryAsync = () => {
         })
       );
       if (isSuccessStatus(res.status)) {
-        let responseData = extractResponseData(res.data, resolvedDataPath);
+        let responseData = res.data;
         if (encryptionOptions && responseData) {
           responseData = applyResponseDecryption(responseData, encryptionOptions);
         }
+        responseData = extractResponseData(responseData, resolvedDataPath);
         dispatch(actions2.set({ key, value: responseData }));
         return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {
@@ -1650,10 +1648,11 @@ var useMutation = (route, option) => {
           }
         );
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, resolvedDataPath);
+          let responseData = res.data;
           if (encryptionOptions && responseData) {
             responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
+          responseData = extractResponseData(responseData, resolvedDataPath);
           setData(responseData);
           setStatus(res.status);
           setLoading(false);

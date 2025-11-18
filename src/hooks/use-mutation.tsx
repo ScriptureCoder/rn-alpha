@@ -41,10 +41,10 @@ const useMutation = <T = any,>(
   const { auth } = app;
   const { getContext } = useCache();
   const [config] = useAlphaConfig();
-  
+
   // Resolve encryption options (hook option > global config)
   const encryptionOptions = resolveEncryptionOptions(option?.encrypted, config.defaultEncryption);
-  
+
   // Resolve dataPath (hook option > global config)
   const resolvedDataPath = option?.dataPath !== undefined ? option.dataPath : config.dataPath;
 
@@ -105,13 +105,13 @@ const useMutation = <T = any,>(
         );
 
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, resolvedDataPath);
-          
+          let responseData = res.data
           // Apply response decryption if enabled
           if (encryptionOptions && responseData) {
             responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
-          
+          responseData = extractResponseData(responseData, resolvedDataPath);
+
           setData(responseData);
           setStatus(res.status);
           setLoading(false);
