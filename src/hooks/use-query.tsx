@@ -44,10 +44,10 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const { key, path, method } = cache.getContext(route, variables);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
   const [config] = useAlphaConfig();
-  
+
   // Resolve encryption options (hook option > global config)
   const encryptionOptions = resolveEncryptionOptions(encrypted, config.defaultEncryption);
-  
+
   // Resolve dataPath (hook option > global config)
   const resolvedDataPath = dataPath !== undefined ? dataPath : config.dataPath;
 
@@ -56,10 +56,10 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
 
   const dispatch = useDispatch();
   const { connected } = useSocket();
-  
+
   // Use ref to store timeout ID for cleanup
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Use ref to store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -76,7 +76,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   // Initial fetch on mount
   useEffect(() => {
     fetchData(variables);
-    
+
     // Cleanup on unmount
     return () => {
       if (timeoutRef.current) {
@@ -168,17 +168,17 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           if (abortControllerRef.current) {
             abortControllerRef.current.abort();
           }
-          
+
           // Create new abort controller for this request
           abortControllerRef.current = new AbortController();
-          
+
           setThread(true);
-          
+
           // Apply request encryption if enabled
           const requestData = encryptionOptions
             ? applyRequestEncryption(fetchVariables, encryptionOptions)
             : fetchVariables;
-          
+
           // Use request deduplication to prevent duplicate requests
           const res: any = await getOrCreateRequest(key, () =>
             http(
@@ -192,21 +192,21 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
               }
             )
           );
-          
+
           const error = !isSuccessStatus(res.status)
             ? extractErrorMessage(res)
             : undefined;
-          
+
           setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
             let responseData = extractResponseData(res.data, resolvedDataPath);
-            
+
             // Apply response decryption if enabled
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
-            
+
             if (responseData) {
               if (onCompleted) {
                 onCompleted(responseData);
@@ -225,7 +225,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         if (isAbortError(e)) {
           return;
         }
-        
+
         const error = e.message || "Oops! an error occurred";
         setThread(false, error, 500);
         if (onError) {
@@ -258,7 +258,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       try {
         // Create abort controller for fetchMore
         const fetchMoreController = new AbortController();
-        
+
         const res: any = await http(
           path,
           (method as Method) || "GET",
@@ -269,7 +269,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
             signal: fetchMoreController.signal,
           }
         );
-        
+
         const error = !isSuccessStatus(res.status)
           ? extractErrorMessage(res)
           : undefined;
@@ -300,7 +300,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         if (isAbortError(e)) {
           return { error: "Request cancelled" };
         }
-        
+
         const error = e.message || "Oops! an error occurred";
         return { error };
       }

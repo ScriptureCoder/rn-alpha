@@ -235,7 +235,7 @@ async function http<T = any>(
     if (auth) {
       headers['Authorization'] = auth;
     }
-
+    console.log(headers, method, path);
     // Prepare request config
     const config: AxiosRequestConfig = {
       method,
