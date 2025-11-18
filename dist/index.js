@@ -1337,7 +1337,7 @@ function applyResponseDecryption(data, options) {
 
 // src/hooks/use-query.tsx
 var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
@@ -1345,6 +1345,7 @@ var useQuery = (route, args) => {
   const policy = networkPolicy || "cache-first";
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(encrypted, config2.defaultEncryption);
+  const resolvedDataPath = dataPath !== void 0 ? dataPath : config2.dataPath;
   const data = use_selector_default((state) => state.cache[key]);
   const thread = use_selector_default((state) => state.thread[key]);
   const dispatch = use_dispatch_default();
@@ -1456,7 +1457,7 @@ var useQuery = (route, args) => {
           const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
           setThread(false, error, res.status);
           if (isSuccessStatus(res.status)) {
-            let responseData = extractResponseData(res.data, config2.dataPath);
+            let responseData = extractResponseData(res.data, resolvedDataPath);
             if (encryptionOptions && responseData) {
               responseData = applyResponseDecryption(responseData, encryptionOptions);
             }
@@ -1483,7 +1484,7 @@ var useQuery = (route, args) => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, config2.dataPath]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath]
   );
   const refetch = (0, import_react5.useCallback)(
     (refetchVariables) => {
@@ -1611,6 +1612,7 @@ var useQueryAsync = () => {
     const { key, method, path } = getContext(route, variables);
     const opts = typeof options === "string" ? { authToken: options } : options || {};
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
+    const resolvedDataPath = opts.dataPath !== void 0 ? opts.dataPath : config2.dataPath;
     try {
       dispatch(
         actions3.set({
@@ -1643,7 +1645,7 @@ var useQueryAsync = () => {
         })
       );
       if (isSuccessStatus(res.status)) {
-        let responseData = extractResponseData(res.data, config2.dataPath);
+        let responseData = extractResponseData(res.data, resolvedDataPath);
         if (encryptionOptions && responseData) {
           responseData = applyResponseDecryption(responseData, encryptionOptions);
         }
@@ -1696,6 +1698,7 @@ var useMutation = (route, option) => {
   const { getContext } = use_cache_default();
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
+  const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
   const abortControllerRef = (0, import_react6.useRef)(null);
   (0, import_react6.useEffect)(() => {
     return () => {
@@ -1731,7 +1734,7 @@ var useMutation = (route, option) => {
           }
         );
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, config2.dataPath);
+          let responseData = extractResponseData(res.data, resolvedDataPath);
           if (encryptionOptions && responseData) {
             responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
@@ -1762,7 +1765,7 @@ var useMutation = (route, option) => {
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext, encryptionOptions, config2.dataPath]
+    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath]
   );
   const cancel = (0, import_react6.useCallback)(() => {
     if (abortControllerRef.current) {
@@ -1795,6 +1798,7 @@ var useMutationAsync = (route, option) => {
   const { auth } = app;
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
+  const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
   const abortControllerRef = (0, import_react7.useRef)(null);
   (0, import_react7.useEffect)(() => {
     return () => {
@@ -1836,7 +1840,7 @@ var useMutationAsync = (route, option) => {
           }
         );
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, config2.dataPath);
+          let responseData = extractResponseData(res.data, resolvedDataPath);
           if (encryptionOptions && responseData) {
             responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
@@ -1866,7 +1870,7 @@ var useMutationAsync = (route, option) => {
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, encryptionOptions, config2.dataPath]
+    [route, option, auth, app, encryptionOptions, resolvedDataPath]
   );
   const cancel = (0, import_react7.useCallback)(() => {
     if (abortControllerRef.current) {

@@ -112,6 +112,7 @@ interface QueryOptions {
         retryCondition?: (error: any) => boolean;
     };
     encrypted?: boolean | EncryptionOptions;
+    dataPath?: string;
     debug?: boolean;
 }
 /**
@@ -160,6 +161,7 @@ interface MutationOptions {
         retryCondition?: (error: any) => boolean;
     };
     encrypted?: boolean | EncryptionOptions;
+    dataPath?: string;
     debug?: boolean;
 }
 /**
@@ -225,6 +227,7 @@ interface UseQueryAsyncOptions {
     authToken?: string;
     signal?: AbortSignal;
     encrypted?: boolean | EncryptionOptions;
+    dataPath?: string;
 }
 /**
  * Hook return type - a function that performs async queries

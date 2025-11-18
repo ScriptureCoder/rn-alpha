@@ -30,6 +30,7 @@ interface UseQueryAsyncOptions {
   authToken?: string;
   signal?: AbortSignal;
   encrypted?: boolean | EncryptionOptions;
+  dataPath?: string; // Override global dataPath for this query
 }
 
 /**
@@ -75,6 +76,9 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
     
     // Resolve encryption options
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config.defaultEncryption);
+    
+    // Resolve dataPath (option > global config)
+    const resolvedDataPath = opts.dataPath !== undefined ? opts.dataPath : config.dataPath;
     
     try {
       // Set loading state
@@ -122,7 +126,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
 
       if (isSuccessStatus(res.status)) {
         // Update cache with successful data
-        let responseData = extractResponseData(res.data, config.dataPath);
+        let responseData = extractResponseData(res.data, resolvedDataPath);
         
         // Apply response decryption if enabled
         if (encryptionOptions && responseData) {

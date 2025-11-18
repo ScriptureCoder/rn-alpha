@@ -44,6 +44,9 @@ const useMutation = <T = any,>(
   
   // Resolve encryption options (hook option > global config)
   const encryptionOptions = resolveEncryptionOptions(option?.encrypted, config.defaultEncryption);
+  
+  // Resolve dataPath (hook option > global config)
+  const resolvedDataPath = option?.dataPath !== undefined ? option.dataPath : config.dataPath;
 
   // Store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -102,7 +105,7 @@ const useMutation = <T = any,>(
         );
 
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, config.dataPath);
+          let responseData = extractResponseData(res.data, resolvedDataPath);
           
           // Apply response decryption if enabled
           if (encryptionOptions && responseData) {
@@ -143,7 +146,7 @@ const useMutation = <T = any,>(
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext, encryptionOptions, config.dataPath]
+    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath]
   );
 
   /**

@@ -26,6 +26,8 @@ export interface QueryOptions {
   };
   // Encryption options
   encrypted?: boolean | EncryptionOptions;
+  // Response data path override
+  dataPath?: string; // Override global dataPath for this query
   // Debug options
   debug?: boolean;
 }
@@ -87,6 +89,8 @@ export interface MutationOptions {
   };
   // Encryption options
   encrypted?: boolean | EncryptionOptions;
+  // Response data path override
+  dataPath?: string; // Override global dataPath for this mutation
   // NEW: Debug mode
   debug?: boolean;
 }

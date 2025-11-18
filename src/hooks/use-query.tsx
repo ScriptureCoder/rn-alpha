@@ -37,7 +37,7 @@ import {
  * @returns QueryResult with data, loading state, and cache manipulation functions
  */
 const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
@@ -47,6 +47,9 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   
   // Resolve encryption options (hook option > global config)
   const encryptionOptions = resolveEncryptionOptions(encrypted, config.defaultEncryption);
+  
+  // Resolve dataPath (hook option > global config)
+  const resolvedDataPath = dataPath !== undefined ? dataPath : config.dataPath;
 
   const data = useSelector((state) => state.cache[key]);
   const thread = useSelector((state) => state.thread[key]);
@@ -197,7 +200,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           setThread(false, error, res.status);
 
           if (isSuccessStatus(res.status)) {
-            let responseData = extractResponseData(res.data, config.dataPath);
+            let responseData = extractResponseData(res.data, resolvedDataPath);
             
             // Apply response decryption if enabled
             if (encryptionOptions && responseData) {
@@ -230,7 +233,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, config.dataPath]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath]
   );
 
   /**

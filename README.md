@@ -369,6 +369,36 @@ By default, `rn-alpha` expects API responses in the format `{ data: { data: [...
 
 **Note**: All hooks (`useQuery`, `useMutation`, `useQueryAsync`, `useMutationAsync`) respect this global configuration, ensuring consistent data extraction across your entire application.
 
+#### Per-Query/Mutation Override
+
+You can override the global `dataPath` for individual queries or mutations:
+
+```typescript
+// Global default
+<AlphaProvider config={{ dataPath: 'data' }}>
+
+// Override per-query
+const { data } = useQuery('users', {
+  dataPath: 'result.items', // Uses this instead of global
+});
+
+// Override per-mutation
+const [mutate] = useMutation('login', {
+  dataPath: '', // Direct response, no extraction
+});
+
+// Override in async query
+const queryAsync = useQueryAsync();
+const result = await queryAsync('endpoint', {}, {
+  dataPath: 'data.payload',
+});
+```
+
+**Priority Order:**
+1. Hook-level `dataPath` option (highest priority)
+2. Global `config.dataPath`
+3. Default `'data'`
+
 ### Environment-Specific Configuration
 
 ```typescript
