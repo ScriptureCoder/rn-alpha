@@ -122,7 +122,7 @@ const getContentTypeHeader = (contentType: ContentType): string => {
       return 'multipart/form-data';
     case 'json':
     default:
-      return 'application/json';
+      return 'application/text';
   }
 };
 

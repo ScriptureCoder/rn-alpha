@@ -164,7 +164,7 @@ var getContentTypeHeader = (contentType) => {
       return "multipart/form-data";
     case "json":
     default:
-      return "application/json";
+      return "application/text";
   }
 };
 var formatRequestData = (data, contentType, method) => {
