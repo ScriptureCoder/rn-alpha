@@ -65,8 +65,8 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
 
   // Handle data completion and retry on connection
   useEffect(() => {
-    if (data && onCompleted) {
-      onCompleted(data);
+    if (data?.data && onCompleted) {
+      onCompleted(data?.data);
     }
     if (connected && thread?.error && (!data || (Array.isArray(data) && data.length < 1))) {
       refetch({});

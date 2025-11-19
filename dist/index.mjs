@@ -1266,8 +1266,8 @@ var useQuery = (route, args) => {
   const timeoutRef = useRef2(null);
   const abortControllerRef = useRef2(null);
   useEffect4(() => {
-    if (data && onCompleted) {
-      onCompleted(data);
+    if ((data == null ? void 0 : data.data) && onCompleted) {
+      onCompleted(data == null ? void 0 : data.data);
     }
     if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
       refetch({});

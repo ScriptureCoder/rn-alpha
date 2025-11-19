@@ -1358,8 +1358,8 @@ var useQuery = (route, args) => {
   const timeoutRef = (0, import_react5.useRef)(null);
   const abortControllerRef = (0, import_react5.useRef)(null);
   (0, import_react5.useEffect)(() => {
-    if (data && onCompleted) {
-      onCompleted(data);
+    if ((data == null ? void 0 : data.data) && onCompleted) {
+      onCompleted(data == null ? void 0 : data.data);
     }
     if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
       refetch({});
