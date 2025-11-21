@@ -1310,7 +1310,7 @@ var useQuery = (route, args) => {
         case "cache-only":
           return;
         case "network-only":
-          fetchHandler(fetchVariables).catch(() => {
+          fetchHandler(fetchVariables, true).catch(() => {
           });
           return;
         case "cache-first":

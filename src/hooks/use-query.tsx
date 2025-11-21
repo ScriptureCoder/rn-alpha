@@ -15,7 +15,7 @@ import {
   isSuccessStatus,
   isAuthError,
   isAbortError,
-} from "./utils/error-handler";
+} from "hooks/utils";
 import { getOrCreateRequest, cancelRequest } from "./utils/request-queue";
 import {
   isCacheExpired,
@@ -23,7 +23,7 @@ import {
   getCacheData,
 } from "./utils/cache-helpers";
 import { extractResponseData } from "./utils/response-helpers";
-import { useAlphaConfig } from "../store/contexts/config-context";
+import { useAlphaConfig } from "store/contexts/config-context";
 import {
   resolveEncryptionOptions,
   applyRequestEncryption,
@@ -123,7 +123,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         case "cache-only":
           return;
         case "network-only":
-          fetchHandler(fetchVariables).catch(() => {});
+          fetchHandler(fetchVariables, true).catch(() => {});
           return;
         case "cache-first":
           if (!data) {
