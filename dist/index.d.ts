@@ -403,6 +403,7 @@ interface AppContextValue {
     user: any;
     connected: boolean;
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
+    setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
     clearAuth: () => void;
 }
