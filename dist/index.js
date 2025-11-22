@@ -375,9 +375,10 @@ var initialState = {
   auth: {
     accessToken: "",
     refreshToken: "",
-    customerId: void 0
+    userId: void 0
   },
-  user: null
+  user: null,
+  colorMode: "light"
 };
 var appSlice = (0, import_toolkit.createSlice)({
   name: "app",
@@ -396,6 +397,9 @@ var appSlice = (0, import_toolkit.createSlice)({
      */
     setUser(state, action) {
       state.user = action.payload;
+    },
+    setColorMode(state, action) {
+      state.colorMode = action.payload;
     },
     /**
      * Clear authentication state
@@ -434,8 +438,10 @@ var AppProvider = ({ children }) => {
     () => ({
       auth: state.auth,
       user: state.user,
+      colorMode: state.colorMode,
       connected,
       setAuth: (payload) => dispatch(actions.setAuth(payload)),
+      setColorMode: (payload) => dispatch(actions.setColorMode(payload)),
       setUser: (payload) => dispatch(actions.setUser(payload)),
       clearAuth: () => dispatch(actions.clearAuth())
     }),
@@ -587,19 +593,65 @@ function parseRoute(route, variables = {}, customerId) {
   };
 }
 
+// src/hooks/utils/error-handler.ts
+function extractErrorMessage(response, defaultMessage = "Oops! an error occurred") {
+  var _a, _b, _c, _d;
+  if (typeof response === "string") {
+    return response;
+  }
+  return ((_b = (_a = response == null ? void 0 : response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || ((_c = response == null ? void 0 : response.data) == null ? void 0 : _c.ResponseDescription) || ((_d = response == null ? void 0 : response.data) == null ? void 0 : _d.error) || (response == null ? void 0 : response.error) || (response == null ? void 0 : response.message) || defaultMessage;
+}
+function isSuccessStatus(status) {
+  return [200, 201].includes(status);
+}
+function isAuthError(status) {
+  return [401, 404].includes(status);
+}
+function createErrorResponse(error, status = 500) {
+  const message = typeof error === "string" ? error : error.message;
+  return {
+    error: message || "Oops! an error occurred",
+    status
+  };
+}
+function createSuccessResponse(data, status = 200) {
+  return {
+    data,
+    status
+  };
+}
+function isAbortError2(error) {
+  var _a, _b;
+  if (!error) return false;
+  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
+}
+function shouldRetry(error) {
+  var _a, _b, _c;
+  if (isAbortError2(error)) {
+    return false;
+  }
+  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
+    return false;
+  }
+  if (isAuthError((_c = error.response) == null ? void 0 : _c.status)) {
+    return false;
+  }
+  return true;
+}
+
 // src/hooks/use-cache.tsx
-var getItemId = (item) => {
-  return (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
+var getItemId = (item, idRef) => {
+  return item[idRef] || (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
 };
 var useCache = () => {
   const dispatch = use_dispatch_default();
-  const { auth: { customerId } } = useApp();
+  const { auth: { userId } } = useApp();
   const cacheState = use_selector_default((state) => state.cache);
   const getContext = (0, import_react2.useCallback)(
     (route, variables) => {
-      return parseRoute(route, variables, customerId);
+      return parseRoute(route, variables, userId);
     },
-    [customerId]
+    [userId]
   );
   const getKey = (0, import_react2.useCallback)(
     (route, variables) => {
@@ -627,10 +679,10 @@ var useCache = () => {
     [setCache]
   );
   const updateItem = (0, import_react2.useCallback)(
-    (key, id, value) => {
+    (key, id, value, idRef) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        const index = cache.findIndex((item) => getItemId(item) === id);
+        const index = cache.findIndex((item) => getItemId(item, idRef) === id);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...value };
@@ -641,10 +693,10 @@ var useCache = () => {
     [cacheState, setCache]
   );
   const getItem = (0, import_react2.useCallback)(
-    (key, id) => {
+    (key, id, idRef) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        return cache.find((item) => getItemId(item) === id);
+        return cache.find((item) => getItemId(item, idRef) === id);
       }
       return void 0;
     },
@@ -680,11 +732,11 @@ var useCache = () => {
     [cacheState, setCache]
   );
   const updateOrPrepend = (0, import_react2.useCallback)(
-    (key, data) => {
+    (key, data, idRef) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        const dataId = getItemId(data);
-        const index = cache.findIndex((item) => getItemId(item) === dataId);
+        const dataId = getItemId(data, idRef);
+        const index = cache.findIndex((item) => getItemId(item, idRef) === dataId);
         if (index !== -1) {
           const updated = [...cache];
           updated[index] = { ...updated[index], ...data };
@@ -710,10 +762,10 @@ var useCache = () => {
     [cacheState, setCache]
   );
   const deleteItem = (0, import_react2.useCallback)(
-    (key, id) => {
+    (key, id, idRef) => {
       const cache = cacheState[key];
       if (Array.isArray(cache)) {
-        setCache(key, cache.filter((item) => getItemId(item) !== id));
+        setCache(key, cache.filter((item) => getItemId(item, idRef) !== id));
       }
     },
     [cacheState, setCache]
@@ -789,52 +841,6 @@ var STATUS_CODES = {
 var DEFAULT_CACHE_TTL = 5 * 60 * 1e3;
 var DEFAULT_STALE_TIME = 0;
 var MAX_CACHE_SIZE = 100;
-
-// src/hooks/utils/error-handler.ts
-function extractErrorMessage(response, defaultMessage = "Oops! an error occurred") {
-  var _a, _b, _c, _d;
-  if (typeof response === "string") {
-    return response;
-  }
-  return ((_b = (_a = response == null ? void 0 : response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.ResponseDescription) || ((_c = response == null ? void 0 : response.data) == null ? void 0 : _c.ResponseDescription) || ((_d = response == null ? void 0 : response.data) == null ? void 0 : _d.error) || (response == null ? void 0 : response.error) || (response == null ? void 0 : response.message) || defaultMessage;
-}
-function isSuccessStatus(status) {
-  return [200, 201].includes(status);
-}
-function isAuthError(status) {
-  return [401, 404].includes(status);
-}
-function createErrorResponse(error, status = 500) {
-  const message = typeof error === "string" ? error : error.message;
-  return {
-    error: message || "Oops! an error occurred",
-    status
-  };
-}
-function createSuccessResponse(data, status = 200) {
-  return {
-    data,
-    status
-  };
-}
-function isAbortError2(error) {
-  var _a, _b;
-  if (!error) return false;
-  return error.name === "AbortError" || error.name === "CanceledError" || error.code === "ERR_CANCELED" || ((_a = error.message) == null ? void 0 : _a.includes("abort")) || ((_b = error.message) == null ? void 0 : _b.includes("cancel"));
-}
-function shouldRetry(error) {
-  var _a, _b, _c;
-  if (isAbortError2(error)) {
-    return false;
-  }
-  if (((_a = error.response) == null ? void 0 : _a.status) >= 400 && ((_b = error.response) == null ? void 0 : _b.status) < 500) {
-    return false;
-  }
-  if (isAuthError((_c = error.response) == null ? void 0 : _c.status)) {
-    return false;
-  }
-  return true;
-}
 
 // src/hooks/utils/request-queue.ts
 var inFlightRequests = /* @__PURE__ */ new Map();
@@ -1342,7 +1348,7 @@ function applyResponseDecryption(data, options) {
 
 // src/hooks/use-query.tsx
 var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
@@ -1578,10 +1584,10 @@ var useQuery = (route, args) => {
         cache.updateValues(key, values);
       },
       updateItem: (id, value) => {
-        cache.updateItem(key, id, value);
+        cache.updateItem(key, id, value, idRef);
       },
       deleteItem: (id) => {
-        cache.deleteItem(key, id);
+        cache.deleteItem(key, id, idRef);
       },
       prepend: (newData) => {
         cache.prepend(key, newData);
@@ -1590,7 +1596,7 @@ var useQuery = (route, args) => {
         cache.append(key, newData);
       }
     }),
-    [key, cache]
+    [key, cache, idRef]
   );
   return {
     data: (data == null ? void 0 : data.data) || init,

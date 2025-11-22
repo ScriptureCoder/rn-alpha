@@ -1,5 +1,5 @@
 import { NetworkPolicy, ConcatStrategy } from "./constants";
-import { Route } from "../types";
+import { Route } from "types";
 import { EncryptionOptions } from "./utils/encryption-helpers";
 
 /**
@@ -28,6 +28,7 @@ export interface QueryOptions {
   encrypted?: boolean | EncryptionOptions;
   // Response data path override
   dataPath?: string; // Override global dataPath for this query
+  idRef?:string;
   // Debug options
   debug?: boolean;
 }
@@ -131,15 +132,15 @@ export interface CacheOperations {
     rawPath: string;
   };
   getData: (key: string) => any;
-  getItem: (key: string, id: string) => any;
+  getItem: (key: string, id: string, idRef?:string) => any;
   update: (key: string, data: any) => void;
   updateValue: (key: string, arg: string, value: any) => void;
   updateValues: (key: string, values: Record<string, any>) => void;
-  updateItem: (key: string, id: string, value: any) => void;
-  deleteItem: (key: string, id: string) => void;
+  updateItem: (key: string, id: string, value: any, idRef?:string) => void;
+  deleteItem: (key: string, id: string, idRef?:string) => void;
   prepend: (key: string, data: any) => void;
   append: (key: string, data: any) => void;
-  updateOrPrepend: (key: string, data: any) => void;
+  updateOrPrepend: (key: string, data: any, idRef?:string) => void;
   // NEW: Invalidation methods
   invalidate: (key: string) => void;
   invalidateQueries: (pattern: string | RegExp) => void;

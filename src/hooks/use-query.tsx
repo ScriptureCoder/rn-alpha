@@ -37,7 +37,7 @@ import {
  * @returns QueryResult with data, loading state, and cache manipulation functions
  */
 const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath } = args || {};
+  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
@@ -359,10 +359,10 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         cache.updateValues(key, values);
       },
       updateItem: (id: string, value: any) => {
-        cache.updateItem(key, id, value);
+        cache.updateItem(key, id, value, idRef);
       },
       deleteItem: (id: string) => {
-        cache.deleteItem(key, id);
+        cache.deleteItem(key, id, idRef);
       },
       prepend: (newData: any) => {
         cache.prepend(key, newData);
@@ -371,7 +371,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         cache.append(key, newData);
       },
     }),
-    [key, cache]
+    [key, cache, idRef]
   );
 
   return {

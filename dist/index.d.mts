@@ -113,6 +113,7 @@ interface QueryOptions {
     };
     encrypted?: boolean | EncryptionOptions;
     dataPath?: string;
+    idRef?: string;
     debug?: boolean;
 }
 /**
@@ -198,15 +199,15 @@ interface CacheOperations {
         rawPath: string;
     };
     getData: (key: string) => any;
-    getItem: (key: string, id: string) => any;
+    getItem: (key: string, id: string, idRef?: string) => any;
     update: (key: string, data: any) => void;
     updateValue: (key: string, arg: string, value: any) => void;
     updateValues: (key: string, values: Record<string, any>) => void;
-    updateItem: (key: string, id: string, value: any) => void;
-    deleteItem: (key: string, id: string) => void;
+    updateItem: (key: string, id: string, value: any, idRef?: string) => void;
+    deleteItem: (key: string, id: string, idRef?: string) => void;
     prepend: (key: string, data: any) => void;
     append: (key: string, data: any) => void;
-    updateOrPrepend: (key: string, data: any) => void;
+    updateOrPrepend: (key: string, data: any, idRef?: string) => void;
     invalidate: (key: string) => void;
     invalidateQueries: (pattern: string | RegExp) => void;
     invalidateAll: () => void;
@@ -314,9 +315,10 @@ interface CoreAppState {
     auth: {
         accessToken: string;
         refreshToken: string;
-        customerId?: string;
+        userId?: string;
     };
     user: any;
+    colorMode: "light" | "dark";
 }
 declare const actions: _reduxjs_toolkit.CaseReducerActions<{
     /**
@@ -329,6 +331,7 @@ declare const actions: _reduxjs_toolkit.CaseReducerActions<{
      * Apps define their own user structure
      */
     setUser(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
+    setColorMode(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<CoreAppState["colorMode"]>): void;
     /**
      * Clear authentication state
      * Resets both auth and user to initial values
@@ -396,6 +399,7 @@ declare const useCache: () => CacheOperations;
  */
 interface AppContextValue {
     auth: CoreAppState['auth'];
+    colorMode: CoreAppState['colorMode'];
     user: any;
     connected: boolean;
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;

@@ -23,6 +23,7 @@ export interface AppContextValue {
 
     // Core actions
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
+    setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
     clearAuth: () => void;
 }
