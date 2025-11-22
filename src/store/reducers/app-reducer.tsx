@@ -8,18 +8,20 @@ export interface CoreAppState {
   auth: {
     accessToken: string;
     refreshToken: string;
-    customerId?: string;
+    userId?: string;
   };
   user: any; // Generic user object - apps define their own User type
+  colorMode: "light" | "dark";
 }
 
 const initialState: CoreAppState = {
   auth: {
     accessToken: '',
     refreshToken: '',
-    customerId: undefined,
+    userId: undefined,
   },
   user: null,
+  colorMode: "light",
 };
 
 /**
@@ -37,7 +39,7 @@ const appSlice = createSlice({
     setAuth(state, action: PayloadAction<Partial<CoreAppState['auth']>>) {
       state.auth = { ...state.auth, ...action.payload };
     },
-    
+
     /**
      * Set user data
      * Apps define their own user structure
@@ -45,7 +47,11 @@ const appSlice = createSlice({
     setUser(state, action: PayloadAction<any>) {
       state.user = action.payload;
     },
-    
+
+    setColorMode(state, action: PayloadAction<CoreAppState["colorMode"]>) {
+      state.colorMode = action.payload;
+    },
+
     /**
      * Clear authentication state
      * Resets both auth and user to initial values
