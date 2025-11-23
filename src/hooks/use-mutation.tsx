@@ -15,7 +15,7 @@ import {
 } from "hooks/utils";
 import { ERROR_MESSAGES } from "./constants";
 import { extractResponseData } from "./utils/response-helpers";
-import { useAlphaConfig } from "../store/contexts/config-context";
+import { useAlphaConfig } from "store/contexts/config-context";
 import {
   resolveEncryptionOptions,
   applyRequestEncryption,
