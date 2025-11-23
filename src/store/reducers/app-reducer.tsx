@@ -12,6 +12,7 @@ export interface CoreAppState {
   };
   user: any; // Generic user object - apps define their own User type
   colorMode: "light" | "dark";
+  deviceId: string
 }
 
 const initialState: CoreAppState = {
@@ -22,6 +23,7 @@ const initialState: CoreAppState = {
   },
   user: null,
   colorMode: "light",
+  deviceId: ""
 };
 
 /**
@@ -32,18 +34,10 @@ const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    /**
-     * Set auth tokens and customer ID
-     * Accepts partial updates to merge with existing auth state
-     */
     setAuth(state, action: PayloadAction<Partial<CoreAppState['auth']>>) {
       state.auth = { ...state.auth, ...action.payload };
     },
 
-    /**
-     * Set user data
-     * Apps define their own user structure
-     */
     setUser(state, action: PayloadAction<any>) {
       state.user = action.payload;
     },
@@ -52,10 +46,10 @@ const appSlice = createSlice({
       state.colorMode = action.payload;
     },
 
-    /**
-     * Clear authentication state
-     * Resets both auth and user to initial values
-     */
+    setDeviceId(state, action: PayloadAction<string>) {
+      state.deviceId = action.payload;
+    },
+
     clearAuth(state) {
       state.auth = initialState.auth;
       state.user = null;
@@ -73,8 +67,6 @@ export default appSlice.reducer;
 export interface LegacyAppState extends CoreAppState {
   /** @deprecated Create a custom reducer for app-specific fields */
   registered?: boolean;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  deviceId?: any;
   /** @deprecated Create a custom reducer for app-specific fields */
   email?: string;
   /** @deprecated Create a custom reducer for app-specific fields */

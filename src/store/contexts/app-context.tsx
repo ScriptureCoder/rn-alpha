@@ -20,12 +20,14 @@ export interface AppContextValue {
     colorMode: CoreAppState['colorMode'];
     user: any;
     connected: boolean;
+    deviceId: string;
 
     // Core actions
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
-    clearAuth: () => void;
+    setDeviceId: (payload: string) => void;
+    clearAuth: (payload: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -81,16 +83,15 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Core context value - minimal and essential only
     const value = useMemo<AppContextValue>(
         () => ({
-            auth: state.auth,
-            user: state.user,
-            colorMode: state.colorMode,
+            ...state,
             connected,
             setAuth: (payload) => dispatch(actions.setAuth(payload)),
             setColorMode: (payload) => dispatch(actions.setColorMode(payload)),
             setUser: (payload) => dispatch(actions.setUser(payload)),
+            setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
             clearAuth: () => dispatch(actions.clearAuth()),
         }),
-        [state.auth, state.user, state.colorMode, connected, dispatch]
+        [state, connected, dispatch]
     );
 
     return (

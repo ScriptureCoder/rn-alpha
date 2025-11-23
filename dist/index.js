@@ -445,7 +445,7 @@ var AppProvider = ({ children }) => {
       setUser: (payload) => dispatch(actions.setUser(payload)),
       clearAuth: () => dispatch(actions.clearAuth())
     }),
-    [state.auth, state.user, connected, dispatch]
+    [state.auth, state.user, state.colorMode, connected, dispatch]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppContext.Provider, { value, children });
 };
