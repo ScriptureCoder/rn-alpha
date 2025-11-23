@@ -281,33 +281,25 @@ var initialState = {
     userId: void 0
   },
   user: null,
-  colorMode: "light"
+  colorMode: "light",
+  deviceId: ""
 };
 var appSlice = createSlice({
   name: "app",
   initialState,
   reducers: {
-    /**
-     * Set auth tokens and customer ID
-     * Accepts partial updates to merge with existing auth state
-     */
     setAuth(state, action) {
       state.auth = { ...state.auth, ...action.payload };
     },
-    /**
-     * Set user data
-     * Apps define their own user structure
-     */
     setUser(state, action) {
       state.user = action.payload;
     },
     setColorMode(state, action) {
       state.colorMode = action.payload;
     },
-    /**
-     * Clear authentication state
-     * Resets both auth and user to initial values
-     */
+    setDeviceId(state, action) {
+      state.deviceId = action.payload;
+    },
     clearAuth(state) {
       state.auth = initialState.auth;
       state.user = null;
@@ -339,16 +331,15 @@ var AppProvider = ({ children }) => {
   }, []);
   const value = useMemo(
     () => ({
-      auth: state.auth,
-      user: state.user,
-      colorMode: state.colorMode,
+      ...state,
       connected,
       setAuth: (payload) => dispatch(actions.setAuth(payload)),
       setColorMode: (payload) => dispatch(actions.setColorMode(payload)),
       setUser: (payload) => dispatch(actions.setUser(payload)),
+      setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
       clearAuth: () => dispatch(actions.clearAuth())
     }),
-    [state.auth, state.user, state.colorMode, connected, dispatch]
+    [state, connected, dispatch]
   );
   return /* @__PURE__ */ jsx(AppContext.Provider, { value, children });
 };

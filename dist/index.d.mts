@@ -319,23 +319,13 @@ interface CoreAppState {
     };
     user: any;
     colorMode: "light" | "dark";
+    deviceId: string;
 }
 declare const actions: _reduxjs_toolkit.CaseReducerActions<{
-    /**
-     * Set auth tokens and customer ID
-     * Accepts partial updates to merge with existing auth state
-     */
     setAuth(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<Partial<CoreAppState['auth']>>): void;
-    /**
-     * Set user data
-     * Apps define their own user structure
-     */
     setUser(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
     setColorMode(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<CoreAppState["colorMode"]>): void;
-    /**
-     * Clear authentication state
-     * Resets both auth and user to initial values
-     */
+    setDeviceId(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<string>): void;
     clearAuth(state: immer.WritableDraft<CoreAppState>): void;
 }, "app">;
 /**
@@ -345,8 +335,6 @@ declare const actions: _reduxjs_toolkit.CaseReducerActions<{
 interface LegacyAppState extends CoreAppState {
     /** @deprecated Create a custom reducer for app-specific fields */
     registered?: boolean;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    deviceId?: any;
     /** @deprecated Create a custom reducer for app-specific fields */
     email?: string;
     /** @deprecated Create a custom reducer for app-specific fields */
@@ -402,9 +390,11 @@ interface AppContextValue {
     colorMode: CoreAppState['colorMode'];
     user: any;
     connected: boolean;
+    deviceId: string;
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
+    setDeviceId: (payload: string) => void;
     clearAuth: () => void;
 }
 /**

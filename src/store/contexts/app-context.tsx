@@ -27,7 +27,7 @@ export interface AppContextValue {
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
     setDeviceId: (payload: string) => void;
-    clearAuth: (payload: string) => void;
+    clearAuth: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
