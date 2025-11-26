@@ -37,9 +37,7 @@ export type {
   ApiResponse,
 } from './hooks/utils';
 
-// Cache types
-export type { CacheEntry, CacheState, CacheMetadata } from './store/reducers/cache-reducer';
-export { setMaxCacheSize, getCacheMetadata } from './store/reducers/cache-reducer';
+// Cache types (now exported via reducers module below)
 
 // HTTP service types and utilities
 export type { HttpOptions, ContentType, HttpResponse } from './utils/service';
@@ -136,10 +134,26 @@ export type {
   RootState, 
   CustomReducers, 
   StoreOptions,
+} from './store';
+
+// Reducer exports - All reducers, actions, and types
+export {
+  appReducer,
+  appActions,
+  cacheReducer,
+  cacheActions,
+  threadReducer,
+  threadActions,
+  setMaxCacheSize,
+  getCacheMetadata,
+} from './store/reducers';
+export type {
   CoreAppState,
   LegacyAppState,
-} from './store';
-export { appActions } from './store';
+  CacheEntry,
+  CacheState,
+  CacheMetadata,
+} from './store/reducers';
 
 // TypeScript helpers for custom stores
 export {

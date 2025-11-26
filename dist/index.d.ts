@@ -258,7 +258,7 @@ declare const useMutation: <T = any>(route: Route, option?: MutationOptions) => 
  */
 declare const useMutationAsync: <T = any>(route: string, option?: MutationOptions) => MutationResult<T>;
 
-declare const _default$1: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
+declare const _default$4: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
 
 /**
  * Custom reducers that apps can provide
@@ -321,13 +321,15 @@ interface CoreAppState {
     colorMode: "light" | "dark";
     deviceId: string;
 }
-declare const actions: _reduxjs_toolkit.CaseReducerActions<{
+declare const actions$2: _reduxjs_toolkit.CaseReducerActions<{
     setAuth(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<Partial<CoreAppState['auth']>>): void;
     setUser(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
     setColorMode(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<CoreAppState["colorMode"]>): void;
     setDeviceId(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<string>): void;
     clearAuth(state: immer.WritableDraft<CoreAppState>): void;
 }, "app">;
+declare const _default$3: redux.Reducer<CoreAppState>;
+
 /**
  * Legacy type for backward compatibility
  * @deprecated Apps should create their own custom reducers instead
@@ -371,6 +373,48 @@ declare function setMaxCacheSize(size: number): void;
  * Get current cache metadata (for debugging)
  */
 declare function getCacheMetadata(): Readonly<CacheMetadata>;
+declare const actions$1: _reduxjs_toolkit.CaseReducerActions<{
+    init(state: immer.WritableDraft<CacheState>, action: PayloadAction<any>): void;
+    set(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
+        key: string;
+        value: any;
+        ttl?: number;
+        staleTime?: number;
+    }>): void;
+    prepend(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
+        key: string;
+        value: any[];
+    }>): void;
+    append(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
+        key: string;
+        value: any[];
+    }>): void;
+    paginate(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
+        key: string;
+        data: any;
+        paginationKey: string;
+    }>): void;
+    remove(state: immer.WritableDraft<CacheState>, action: PayloadAction<string>): void;
+    clear: () => CacheState;
+    delete(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
+        key: string;
+    }>): void;
+}, "cache">;
+declare const _default$2: redux.Reducer<CacheState>;
+
+declare const actions: _reduxjs_toolkit.CaseReducerActions<{
+    set(state: any, action: PayloadAction<{
+        key: string;
+        value: {
+            loading: boolean;
+            error?: string;
+            status?: number;
+        };
+    }>): void;
+    remove(state: any, action: PayloadAction<string>): void;
+    clear: () => any;
+}, "thread">;
+declare const _default$1: redux.Reducer<any>;
 
 declare const useSelector: TypedUseSelectorHook<RootState>;
 
@@ -1288,4 +1332,4 @@ declare const Toast: (message: string, duration?: "SHORT" | "LONG") => void;
 
 declare const readFile: (path: string) => Promise<any>;
 
-export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type EncryptionOptions, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions as appActions, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$1 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type EncryptionOptions, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions$2 as appActions, _default$3 as appReducer, actions$1 as cacheActions, _default$2 as cacheReducer, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, actions as threadActions, _default$1 as threadReducer, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$4 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
