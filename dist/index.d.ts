@@ -500,6 +500,7 @@ interface AlphaConfig {
     };
     dataPath?: string;
     debug?: boolean;
+    onAuthError?: (status: number) => void | Promise<void>;
 }
 declare const DEFAULT_CONFIG: AlphaConfig;
 declare const naira = "\u20A6";

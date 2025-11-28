@@ -53,7 +53,7 @@ interface CoreAppState {
   auth: {
     accessToken: string;
     refreshToken: string;
-    customerId?: string;
+    authId?: string;
   };
   user: any; // Your user object
 }

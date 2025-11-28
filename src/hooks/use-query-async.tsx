@@ -139,6 +139,10 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
       } else if (isAuthError(res.status)) {
         // Handle auth errors - clear authentication
         app.clearAuth();
+        // Call onAuthError callback if provided
+        if (config.onAuthError) {
+          Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+        }
         return createErrorResponse(error || "Unauthorized", res.status);
       }
 

@@ -1477,6 +1477,9 @@ var useQuery = (route, args) => {
             }
           } else if (isAuthError(res.status)) {
             app.clearAuth();
+            if (config2.onAuthError) {
+              Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+            }
           } else if (error && onError) {
             onError(error, res.status);
           }
@@ -1492,7 +1495,7 @@ var useQuery = (route, args) => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath, config2]
   );
   const refetch = (0, import_react5.useCallback)(
     (refetchVariables) => {
@@ -1533,6 +1536,9 @@ var useQuery = (route, args) => {
           return { data: res.data.data };
         } else if (isAuthError(res.status)) {
           app.clearAuth();
+          if (config2.onAuthError) {
+            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+          }
           return { error };
         }
         return { error };
@@ -1544,7 +1550,7 @@ var useQuery = (route, args) => {
         return { error };
       }
     },
-    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app]
+    [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app, config2]
   );
   const abort = (0, import_react5.useCallback)(() => {
     if (abortControllerRef.current) {
@@ -1662,6 +1668,9 @@ var useQueryAsync = () => {
         return createSuccessResponse(responseData, res.status);
       } else if (isAuthError(res.status)) {
         app.clearAuth();
+        if (config2.onAuthError) {
+          Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+        }
         return createErrorResponse(error || "Unauthorized", res.status);
       }
       return createErrorResponse(error || "Request failed", res.status);
@@ -1757,6 +1766,9 @@ var useMutation = (route, option) => {
         if (rawPath.includes(":customerId") && isAuthError(res.status)) {
           errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
           app.clearAuth();
+          if (config2.onAuthError) {
+            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+          }
         }
         setError(errorMessage);
         setStatus(res.status);
@@ -1775,7 +1787,7 @@ var useMutation = (route, option) => {
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath]
+    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config2]
   );
   const cancel = (0, import_react6.useCallback)(() => {
     if (abortControllerRef.current) {
@@ -1861,6 +1873,9 @@ var useMutationAsync = (route, option) => {
         }
         if (isAuthError(res.status)) {
           app.clearAuth();
+          if (config2.onAuthError) {
+            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+          }
         }
         const errorMessage = extractErrorMessage(res);
         setError(errorMessage);

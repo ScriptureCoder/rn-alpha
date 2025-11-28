@@ -232,7 +232,7 @@ export function ProfileScreen() {
       <h1>Profile</h1>
       
       {/* Core state from rn-alpha */}
-      <p>User ID: {app.auth.customerId}</p>
+      <p>User ID: {app.auth.authId}</p>
       <p>Username: {app.user?.username}</p>
       <p>Connected: {app.connected ? 'Yes' : 'No'}</p>
       

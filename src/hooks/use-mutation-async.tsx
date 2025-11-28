@@ -130,6 +130,10 @@ const useMutationAsync = <T = any,>(
         if (isAuthError(res.status)) {
           // Auth error - clear authentication
           app.clearAuth();
+          // Call onAuthError callback if provided
+          if (config.onAuthError) {
+            Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+          }
         }
 
         const errorMessage = extractErrorMessage(res);

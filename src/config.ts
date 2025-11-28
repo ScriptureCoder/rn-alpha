@@ -44,6 +44,10 @@ export interface AlphaConfig {
   
   // Debug mode
   debug?: boolean;
+
+  // Auth error callback - called when 401/404 errors occur
+  // Allows custom handling like navigation to login screen
+  onAuthError?: (status: number) => void | Promise<void>;
 }
 
 // Default configuration

@@ -1,6 +1,6 @@
 {
   "name": "@scripturecoder/rn-alpha-hooks",
-  "version": "0.3.7-alpha",
+  "version": "0.3.8-alpha",
   "description": "Flexible React Native hooks, extensible store, and utilities with TypeScript support.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -25,6 +25,7 @@
     "lint": "eslint .",
     "test": "jest",
     "prepare": "npm run build",
+    "pack": "npm run build && npm pack",
     "pub": "npm run build && npm pack && npm publish --access public"
   },
   "dependencies": {

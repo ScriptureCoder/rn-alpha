@@ -14,13 +14,13 @@ export interface ParsedRoute {
  * Parses a route string and replaces path parameters with actual values
  * @param route - The route key from PATHS or a raw route string
  * @param variables - Object containing path parameters and query variables
- * @param customerId - The customer ID to inject into paths
+ * @param authId - The customer ID to inject into paths
  * @returns ParsedRoute object with path, method, key, and rawPath
  */
 export function parseRoute(
   route: Route,
   variables: Record<string, any> = {},
-  customerId?: string
+  authId?: string
 ): ParsedRoute {
   const config = getHttpConfig();
   
@@ -38,7 +38,7 @@ export function parseRoute(
   
   // Replace path parameters
   const path = "/" + pathTemplate.replace(/:\w+/g, (matched: string) => {
-    const params = { customerId, ...variablesCopy };
+    const params = { authId, ...variablesCopy };
     const paramName = matched.replace(/\W/g, "");
     
     // Remove from variables copy so it's not added to query string
@@ -62,15 +62,15 @@ export function parseRoute(
  * Generates a cache key for a given route and variables
  * @param route - The route key from PATHS
  * @param variables - Object containing route variables
- * @param customerId - The customer ID
+ * @param authId - The customer ID
  * @returns Cache key string
  */
 export function generateCacheKey(
   route: Route,
   variables: Record<string, any> = {},
-  customerId?: string
+  authId?: string
 ): string {
-  const { key } = parseRoute(route, variables, customerId);
+  const { key } = parseRoute(route, variables, authId);
   return key;
 }
 

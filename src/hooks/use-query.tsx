@@ -217,6 +217,10 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           } else if (isAuthError(res.status)) {
             // Auth error - clear authentication
             app.clearAuth();
+            // Call onAuthError callback if provided
+            if (config.onAuthError) {
+              Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+            }
           } else if (error && onError) {
             onError(error, res.status);
           }
@@ -234,7 +238,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         }
       }
     },
-    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath]
+    [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath, config]
   );
 
   /**
@@ -293,6 +297,10 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         } else if (isAuthError(res.status)) {
           // Auth error - clear authentication
           app.clearAuth();
+          // Call onAuthError callback if provided
+          if (config.onAuthError) {
+            Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+          }
           return { error };
         }
         return { error };
@@ -306,7 +314,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         return { error };
       }
     },
-    [path, method, variables, auth?.accessToken, dispatch, key, app]
+    [path, method, variables, auth?.accessToken, dispatch, key, app, config]
   );
 
   /**

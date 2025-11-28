@@ -121,10 +121,14 @@ const useMutation = <T = any,>(
         let errorMessage = extractErrorMessage(res);
 
         // Check for auth errors
-        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
+        if (rawPath.includes(":authId") && isAuthError(res.status)) {
           errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
           // Auth error - clear authentication
           app.clearAuth();
+          // Call onAuthError callback if provided
+          if (config.onAuthError) {
+            Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+          }
         }
 
         setError(errorMessage);
@@ -146,7 +150,7 @@ const useMutation = <T = any,>(
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath]
+    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config]
   );
 
   /**
