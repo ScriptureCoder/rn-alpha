@@ -121,11 +121,10 @@ const useMutation = <T = any,>(
         let errorMessage = extractErrorMessage(res);
 
         // Check for auth errors
-        if (rawPath.includes(":authId") && isAuthError(res.status)) {
-          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
+        if (isAuthError(res.status)) {
           // Auth error - clear authentication
           app.clearAuth();
-          // Call onAuthError callback if provided
+          // Call onAuthError callback if provided (for all auth errors)
           if (config.onAuthError) {
             Promise.resolve(config.onAuthError(res.status)).catch(console.error);
           }

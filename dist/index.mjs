@@ -463,7 +463,7 @@ var PATHS = {
 var paths_default = PATHS;
 
 // src/hooks/utils/route-parser.ts
-function parseRoute(route, variables = {}, customerId) {
+function parseRoute(route, variables = {}, authId) {
   const config2 = getHttpConfig();
   const allPaths = {
     ...paths_default,
@@ -473,7 +473,7 @@ function parseRoute(route, variables = {}, customerId) {
   const [method, pathTemplate] = rawPath.split(":/");
   const variablesCopy = { ...variables };
   const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
-    const params = { customerId, ...variablesCopy };
+    const params = { authId, ...variablesCopy };
     const paramName = matched.replace(/\W/g, "");
     delete variablesCopy[paramName];
     return params[paramName] || matched;
@@ -1666,8 +1666,7 @@ var useMutation = (route, option) => {
           return createSuccessResponse(responseData, res.status);
         }
         let errorMessage = extractErrorMessage(res);
-        if (rawPath.includes(":customerId") && isAuthError(res.status)) {
-          errorMessage = ERROR_MESSAGES.SESSION_EXPIRED;
+        if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
             Promise.resolve(config2.onAuthError(res.status)).catch(console.error);

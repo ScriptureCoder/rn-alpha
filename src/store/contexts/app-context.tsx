@@ -27,6 +27,7 @@ export interface AppContextValue {
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
     setDeviceId: (payload: string) => void;
+    setEmail: (payload: string) => void;
     clearAuth: () => void;
 }
 
@@ -88,6 +89,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             setAuth: (payload) => dispatch(actions.setAuth(payload)),
             setColorMode: (payload) => dispatch(actions.setColorMode(payload)),
             setUser: (payload) => dispatch(actions.setUser(payload)),
+            setEmail: (payload) => dispatch(actions.setEmail(payload)),
             setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
             clearAuth: () => dispatch(actions.clearAuth()),
         }),

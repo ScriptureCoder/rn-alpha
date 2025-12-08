@@ -13,6 +13,7 @@ export interface CoreAppState {
   user: any; // Generic user object - apps define their own User type
   colorMode: "light" | "dark";
   deviceId: string
+  email: string
 }
 
 const initialState: CoreAppState = {
@@ -23,7 +24,8 @@ const initialState: CoreAppState = {
   },
   user: null,
   colorMode: "light",
-  deviceId: ""
+  deviceId: "",
+  email: ""
 };
 
 /**
@@ -40,6 +42,10 @@ const appSlice = createSlice({
 
     setUser(state, action: PayloadAction<any>) {
       state.user = action.payload;
+    },
+
+    setEmail(state, action: PayloadAction<any>) {
+      state.email = action.payload;
     },
 
     setColorMode(state, action: PayloadAction<CoreAppState["colorMode"]>) {
@@ -59,22 +65,3 @@ const appSlice = createSlice({
 
 export const actions = appSlice.actions;
 export default appSlice.reducer;
-
-/**
- * Legacy type for backward compatibility
- * @deprecated Apps should create their own custom reducers instead
- */
-export interface LegacyAppState extends CoreAppState {
-  /** @deprecated Create a custom reducer for app-specific fields */
-  registered?: boolean;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  email?: string;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  image?: string;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  defaultPassword?: boolean;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  biometric?: boolean;
-  /** @deprecated Create a custom reducer for app-specific fields */
-  visibility?: any;
-}
