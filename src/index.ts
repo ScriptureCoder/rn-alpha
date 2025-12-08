@@ -129,10 +129,10 @@ export { useAlphaConfig } from './store/contexts/config-context';
 export { default as AppProvider } from './store/contexts/app-context';
 export { AppContextValue } from './store/contexts/app-context';
 export { store, createAlphaStore, defaultStore } from './store';
-export type { 
-  AppDispatch, 
-  RootState, 
-  CustomReducers, 
+export type {
+  AppDispatch,
+  RootState,
+  CustomReducers,
   StoreOptions,
 } from './store';
 
@@ -149,7 +149,6 @@ export {
 } from './store/reducers';
 export type {
   CoreAppState,
-  LegacyAppState,
   CacheEntry,
   CacheState,
   CacheMetadata,
@@ -179,10 +178,10 @@ export * from './types';
 export { setHttpConfig, getHttpConfig } from './utils/service';
 
 export { default as formatMoney } from './utils/money';
-export { 
-  encrypt, 
-  decrypt, 
-  setEncryptionConfig, 
+export {
+  encrypt,
+  decrypt,
+  setEncryptionConfig,
   getEncryptionConfig,
   isValidEncryptionConfig,
   generateEncryptionConfig,

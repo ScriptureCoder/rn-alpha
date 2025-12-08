@@ -384,7 +384,8 @@ var initialState = {
   },
   user: null,
   colorMode: "light",
-  deviceId: ""
+  deviceId: "",
+  email: ""
 };
 var appSlice = (0, import_toolkit.createSlice)({
   name: "app",
@@ -395,6 +396,9 @@ var appSlice = (0, import_toolkit.createSlice)({
     },
     setUser(state, action) {
       state.user = action.payload;
+    },
+    setEmail(state, action) {
+      state.email = action.payload;
     },
     setColorMode(state, action) {
       state.colorMode = action.payload;
@@ -438,6 +442,7 @@ var AppProvider = ({ children }) => {
       setAuth: (payload) => dispatch(actions.setAuth(payload)),
       setColorMode: (payload) => dispatch(actions.setColorMode(payload)),
       setUser: (payload) => dispatch(actions.setUser(payload)),
+      setEmail: (payload) => dispatch(actions.setEmail(payload)),
       setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
       clearAuth: () => dispatch(actions.clearAuth())
     }),

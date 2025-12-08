@@ -320,34 +320,17 @@ interface CoreAppState {
     user: any;
     colorMode: "light" | "dark";
     deviceId: string;
+    email: string;
 }
 declare const actions$2: _reduxjs_toolkit.CaseReducerActions<{
     setAuth(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<Partial<CoreAppState['auth']>>): void;
     setUser(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
+    setEmail(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<any>): void;
     setColorMode(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<CoreAppState["colorMode"]>): void;
     setDeviceId(state: immer.WritableDraft<CoreAppState>, action: PayloadAction<string>): void;
     clearAuth(state: immer.WritableDraft<CoreAppState>): void;
 }, "app">;
 declare const _default$3: redux.Reducer<CoreAppState>;
-
-/**
- * Legacy type for backward compatibility
- * @deprecated Apps should create their own custom reducers instead
- */
-interface LegacyAppState extends CoreAppState {
-    /** @deprecated Create a custom reducer for app-specific fields */
-    registered?: boolean;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    email?: string;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    image?: string;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    defaultPassword?: boolean;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    biometric?: boolean;
-    /** @deprecated Create a custom reducer for app-specific fields */
-    visibility?: any;
-}
 
 /**
  * Cache entry structure with TTL support
@@ -439,6 +422,7 @@ interface AppContextValue {
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
     setDeviceId: (payload: string) => void;
+    setEmail: (payload: string) => void;
     clearAuth: () => void;
 }
 /**
@@ -1333,4 +1317,4 @@ declare const Toast: (message: string, duration?: "SHORT" | "LONG") => void;
 
 declare const readFile: (path: string) => Promise<any>;
 
-export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type EncryptionOptions, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, type LegacyAppState, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions$2 as appActions, _default$3 as appReducer, actions$1 as cacheActions, _default$2 as cacheReducer, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, actions as threadActions, _default$1 as threadReducer, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$4 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };
+export { type AlphaConfig, AlphaProvider, type ApiResponse, type AppContextValue, type AppDispatch, AppProvider, type CacheEntry, type CacheMetadata, type CacheOperations, type CacheState, type ConcatStrategy, type ContentType, type CoreAppState, type CustomReducers, DEFAULT_CACHE_TTL, DEFAULT_CONFIG, DEFAULT_STALE_TIME, type DashboardStackList, ERROR_MESSAGES, type EncryptionConfig, type EncryptionOptions, type ErrorResponse, type ExtendedAppContext, type ExtendedRootState, type HttpOptions, type HttpResponse, type InferActions, MAX_CACHE_SIZE, type Method, type ModalProps, type MutationOptions, type MutationResponse, type MutationResult, NETWORK_TIMEOUT, type NetworkPolicy, OfflineQueue, PATHS, type ParsedRoute, type QueryDebugInfo, QueryDebugger, type QueryOptions, type QueryResult, type QueuedMutation, type RetryOptions, type RootStackParamList, type RootState, type Route, STATUS_CODES, type SheetProps, type StateFromReducer, type StoreOptions, type SuccessResponse, type TimingInfo, Toast, type Visibility, type Weight, config as alphaConfig, actions$2 as appActions, _default$3 as appReducer, actions$1 as cacheActions, _default$2 as cacheReducer, canUseCache, cancelRequest, capitalize, clearAllRequests, combineAbortSignals, createAbortController, createAlphaStore, createCacheEntry, createDebugger, createErrorResponse, createSelector, createSuccessResponse, createTimeoutController, createTypedDispatch, createTypedSelector, decrypt, defaultStore, disableGlobalDebug, enableGlobalDebug, encrypt, extractErrorMessage, extractResponseData, formatFormData, formatMoney, formatUrlEncoded, generateEncryptionConfig, getCacheAge, getCacheData, getCacheMetadata, getEncryptionConfig, getHttpConfig, getInFlightCount, getMime, getOfflineQueue, getOrCreateRequest, http, isAbortError, isAuthError, isCacheExpired, isCacheFresh, isCacheStale, isCancelError, isGlobalDebugEnabled, isAbortError$1 as isHttpAbortError, isRequestInFlight, isSuccessStatus, isValidEncryptionConfig, naira, readFile, retryWithBackoff, retryWithJitter, safeAbort, setEncryptionConfig, setHttpConfig, setMaxCacheSize, shouldRetry, _default as storage, defaultStore as store, actions as threadActions, _default$1 as threadReducer, useAlphaConfig, useApp, useAppDispatch, useAppSelector, useCache, _default$4 as useDispatch, useMutation, useMutationAsync, useQuery, useQueryAsync, useRefetchInterval, useRefetchOnFocus, useRefetchOnReconnect, useSelector };

@@ -6,7 +6,7 @@
 // App Reducer
 export { default as appReducer } from './app-reducer';
 export { actions as appActions } from './app-reducer';
-export type { CoreAppState, LegacyAppState } from './app-reducer';
+export type { CoreAppState } from './app-reducer';
 
 // Cache Reducer
 export { default as cacheReducer } from './cache-reducer';
