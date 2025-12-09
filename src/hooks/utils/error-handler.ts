@@ -32,7 +32,7 @@ export function extractErrorMessage(
   if (typeof response === "string") {
     return response;
   }
-  
+
   // Try common error paths
   return (
     response?.data?.data?.ResponseDescription ||
@@ -74,7 +74,7 @@ export function createErrorResponse(
 ): ErrorResponse {
   const message = typeof error === "string" ? error : error.message;
   return {
-    error: message || "Oops! an error occurred",
+    error: message ?? "Oops! an error occurred",
     status,
   };
 }

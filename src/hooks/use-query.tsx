@@ -307,7 +307,8 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       } catch (e: any) {
         // Handle abort errors
         if (isAbortError(e)) {
-          return { error: "Request cancelled" };
+          return { error: "" };
+          // return { error: "Request cancelled" };
         }
 
         const error = e.message || "Oops! an error occurred";

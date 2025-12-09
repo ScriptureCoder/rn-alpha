@@ -139,7 +139,8 @@ const useMutation = <T = any,>(
         if (isAbortError(e)) {
           setLoading(false);
           setStatus(0);
-          return createErrorResponse("Request cancelled", 0);
+          return createErrorResponse("", 0);
+          // return createErrorResponse("Request cancelled", 0);
         }
 
         setLoading(false);

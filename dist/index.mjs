@@ -509,7 +509,7 @@ function isAuthError(status) {
 function createErrorResponse(error, status = 500) {
   const message = typeof error === "string" ? error : error.message;
   return {
-    error: message || "Oops! an error occurred",
+    error: message != null ? message : "Oops! an error occurred",
     status
   };
 }
@@ -1452,7 +1452,7 @@ var useQuery = (route, args) => {
         return { error };
       } catch (e) {
         if (isAbortError2(e)) {
-          return { error: "Request cancelled" };
+          return { error: "" };
         }
         const error = e.message || "Oops! an error occurred";
         return { error };
@@ -1685,7 +1685,7 @@ var useMutation = (route, option) => {
         if (isAbortError2(e)) {
           setLoading(false);
           setStatus(0);
-          return createErrorResponse("Request cancelled", 0);
+          return createErrorResponse("", 0);
         }
         setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;

@@ -21,6 +21,7 @@ export interface AppContextValue {
     user: any;
     connected: boolean;
     deviceId: string;
+    email: string;
 
     // Core actions
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;

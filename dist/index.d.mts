@@ -418,6 +418,7 @@ interface AppContextValue {
     user: any;
     connected: boolean;
     deviceId: string;
+    email: string;
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;
