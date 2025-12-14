@@ -121,6 +121,7 @@ const getContentTypeHeader = (contentType: ContentType): string => {
     case 'multipart':
       return 'multipart/form-data';
     case 'json':
+      return 'application/json';
     default:
       return 'application/text';
   }

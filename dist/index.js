@@ -271,6 +271,7 @@ var getContentTypeHeader = (contentType) => {
     case "multipart":
       return "multipart/form-data";
     case "json":
+      return "application/json";
     default:
       return "application/text";
   }
@@ -1627,82 +1628,156 @@ var useQueryAsync = () => {
   const { getContext } = use_cache_default();
   const dispatch = use_dispatch_default();
   const [config2] = useAlphaConfig();
+  const cacheState = use_selector_default((state) => state.cache);
   return async (route, variables = {}, options) => {
     const { key, method, path } = getContext(route, variables);
     const opts = typeof options === "string" ? { authToken: options } : options || {};
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
     const resolvedDataPath = opts.dataPath !== void 0 ? opts.dataPath : config2.dataPath;
-    try {
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: true,
-            error: void 0
+    const policy = opts.networkPolicy || "cache-first";
+    const cachedEntry = cacheState[key];
+    const cachedData = getCacheData(cachedEntry);
+    const performNetworkRequest = async () => {
+      try {
+        dispatch(
+          actions3.set({
+            key,
+            value: {
+              loading: true,
+              error: void 0
+            }
+          })
+        );
+        const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
+        const res = await service_default(
+          path,
+          method || "GET",
+          requestData,
+          {
+            returnStatus: true,
+            auth: opts.authToken || auth.accessToken,
+            signal: opts.signal
           }
-        })
-      );
-      const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
-      const res = await service_default(
-        path,
-        method || "GET",
-        requestData,
-        {
-          returnStatus: true,
-          auth: opts.authToken || auth.accessToken,
-          signal: opts.signal
-        }
-      );
-      const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: false,
-            error
-          }
-        })
-      );
-      if (isSuccessStatus(res.status)) {
-        let responseData = res.data;
-        if (encryptionOptions && responseData) {
-          responseData = applyResponseDecryption(responseData, encryptionOptions);
-        }
-        responseData = extractResponseData(responseData, resolvedDataPath);
-        dispatch(actions2.set({ key, value: responseData }));
-        return createSuccessResponse(responseData, res.status);
-      } else if (isAuthError(res.status)) {
-        app.clearAuth();
-        if (config2.onAuthError) {
-          Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
-        }
-        return createErrorResponse(error || "Unauthorized", res.status);
-      }
-      return createErrorResponse(error || "Request failed", res.status);
-    } catch (e) {
-      if (isAbortError2(e)) {
+        );
+        const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
         dispatch(
           actions3.set({
             key,
             value: {
               loading: false,
-              error: void 0
+              error
             }
           })
         );
-        return createErrorResponse("Request cancelled", 0);
-      }
-      const error = e.message || "Oops! an error occurred";
-      dispatch(
-        actions3.set({
-          key,
-          value: {
-            loading: false,
-            error
+        if (isSuccessStatus(res.status)) {
+          let responseData = res.data;
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
-        })
-      );
-      return createErrorResponse(error, 500);
+          responseData = extractResponseData(responseData, resolvedDataPath);
+          dispatch(actions2.set({ key, value: responseData }));
+          if (opts.onCompleted) {
+            opts.onCompleted(responseData);
+          }
+          return createSuccessResponse(responseData, res.status);
+        } else if (isAuthError(res.status)) {
+          app.clearAuth();
+          if (config2.onAuthError) {
+            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+          }
+          const errorMessage2 = error || "Unauthorized";
+          if (opts.onError) {
+            opts.onError(errorMessage2, res.status);
+          }
+          return createErrorResponse(errorMessage2, res.status);
+        }
+        const errorMessage = error || "Request failed";
+        if (opts.onError) {
+          opts.onError(errorMessage, res.status);
+        }
+        return createErrorResponse(errorMessage, res.status);
+      } catch (e) {
+        if (isAbortError2(e)) {
+          dispatch(
+            actions3.set({
+              key,
+              value: {
+                loading: false,
+                error: void 0
+              }
+            })
+          );
+          return createErrorResponse("Request cancelled", 0);
+        }
+        const error = e.message || "Oops! an error occurred";
+        dispatch(
+          actions3.set({
+            key,
+            value: {
+              loading: false,
+              error
+            }
+          })
+        );
+        if (opts.onError) {
+          opts.onError(error, 500);
+        }
+        return createErrorResponse(error, 500);
+      }
+    };
+    switch (policy) {
+      case "cache-only":
+        if (cachedData !== void 0) {
+          if (opts.onCompleted) {
+            opts.onCompleted(cachedData);
+          }
+          return createSuccessResponse(cachedData, 200);
+        }
+        const noCacheError = "No cached data available";
+        if (opts.onError) {
+          opts.onError(noCacheError, 404);
+        }
+        return createErrorResponse(noCacheError, 404);
+      case "network-only":
+        return performNetworkRequest();
+      case "cache-first":
+        if (cachedData !== void 0) {
+          if (opts.onCompleted) {
+            opts.onCompleted(cachedData);
+          }
+          return createSuccessResponse(cachedData, 200);
+        }
+        return performNetworkRequest();
+      case "network-and-cache":
+        if (cachedData !== void 0) {
+          if (opts.onCompleted) {
+            opts.onCompleted(cachedData);
+          }
+          performNetworkRequest().catch(() => {
+          });
+          return createSuccessResponse(cachedData, 200);
+        }
+        return performNetworkRequest();
+      case "stale-while-revalidate":
+        if (cachedEntry && !isCacheExpired(cachedEntry)) {
+          if (opts.onCompleted) {
+            opts.onCompleted(cachedData);
+          }
+          if (isCacheStale(cachedEntry)) {
+            performNetworkRequest().catch(() => {
+            });
+          }
+          return createSuccessResponse(cachedData, 200);
+        }
+        return performNetworkRequest();
+      default:
+        if (cachedData !== void 0) {
+          if (opts.onCompleted) {
+            opts.onCompleted(cachedData);
+          }
+          return createSuccessResponse(cachedData, 200);
+        }
+        return performNetworkRequest();
     }
   };
 };

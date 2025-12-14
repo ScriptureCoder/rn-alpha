@@ -229,6 +229,9 @@ interface UseQueryAsyncOptions {
     signal?: AbortSignal;
     encrypted?: boolean | EncryptionOptions;
     dataPath?: string;
+    onCompleted?: (data: any) => void;
+    onError?: (error: string, status?: number) => void;
+    networkPolicy?: NetworkPolicy;
 }
 /**
  * Hook return type - a function that performs async queries
