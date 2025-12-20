@@ -484,23 +484,68 @@ var cacheSlice = (0, import_toolkit2.createSlice)({
         expiresAt: ttl ? timestamp + ttl : void 0,
         staleAt: staleTime !== void 0 ? timestamp + staleTime : void 0
       };
+      console.log(key, { entry });
       state[key] = entry;
     },
     prepend(state, action) {
-      const timestamp = (/* @__PURE__ */ new Date()).getTime();
-      state[action.payload.key] = action.payload.value.map((data) => ({ ...data, timestamp })).concat(state[action.payload.key] || []);
+      const timestamp = Date.now();
+      const { key, value, ttl, staleTime } = action.payload;
+      updateAccessOrder(state, key);
+      const entry = state[key];
+      const incomingData = normalizeToArray(value);
+      console.log({ key, incomingData, entry });
+      console.log(
+        {
+          ...entry || {},
+          data: [...incomingData, ...entry.data || []],
+          ndata: incomingData,
+          // data: [ ...incomingData, ...(entry.data||[])],
+          timestamp
+        }
+      );
+      state[key] = {
+        // ...(entry||{}),
+        data: [...incomingData],
+        // data: [ ...incomingData, ...(entry.data||[])],
+        timestamp
+        // expiresAt,
+        // staleAt,
+      };
     },
     append(state, action) {
-      const timestamp = (/* @__PURE__ */ new Date()).getTime();
-      state[action.payload.key] = (state[action.payload.key] || []).concat(action.payload.value.map((data) => ({ ...data, timestamp })));
+      const timestamp = Date.now();
+      const { key, value, ttl, staleTime } = action.payload;
+      updateAccessOrder(state, key);
+      const entry = state[key];
+      const incomingData = normalizeToArray(value);
+      state[key] = {
+        ...entry || {},
+        data: [...entry.data || [], ...incomingData],
+        timestamp
+        // expiresAt,
+        // staleAt,
+      };
     },
     paginate(state, action) {
-      const timestamp = (/* @__PURE__ */ new Date()).getTime();
-      const { key, data, paginationKey } = action.payload;
+      const timestamp = Date.now();
+      const { key, data, paginationKey, ttl, staleTime } = action.payload;
+      updateAccessOrder(state, key);
+      const existingEntry = state[key];
+      const existingData = extractCacheData(existingEntry);
+      const baseData = existingData && typeof existingData === "object" ? existingData : {};
+      const existingPage = normalizeToArray(baseData[paginationKey]);
+      const incomingPage = normalizeToArray(data == null ? void 0 : data[paginationKey]);
+      const mergedData = {
+        ...baseData,
+        ...data || {},
+        [paginationKey]: [...existingPage, ...incomingPage]
+      };
+      const { expiresAt, staleAt } = calculateExpiry(existingEntry, timestamp, ttl, staleTime);
       state[key] = {
-        ...data,
-        [paginationKey]: [...state[key][paginationKey], ...data[paginationKey]],
-        timestamp
+        data: mergedData,
+        timestamp,
+        expiresAt,
+        staleAt
       };
     },
     remove(state, action) {
@@ -518,6 +563,26 @@ var cacheSlice = (0, import_toolkit2.createSlice)({
     }
   }
 });
+function isCacheEntry(entry) {
+  return !!entry && typeof entry === "object" && "data" in entry && "timestamp" in entry;
+}
+function extractCacheData(entry) {
+  return isCacheEntry(entry) ? entry.data : entry;
+}
+function normalizeToArray(value) {
+  if (value === void 0 || value === null) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+function calculateExpiry(existingEntry, timestamp, ttl, staleTime) {
+  const existingTtlDuration = isCacheEntry(existingEntry) && existingEntry.expiresAt !== void 0 ? existingEntry.expiresAt - existingEntry.timestamp : void 0;
+  const existingStaleDuration = isCacheEntry(existingEntry) && existingEntry.staleAt !== void 0 ? existingEntry.staleAt - existingEntry.timestamp : void 0;
+  return {
+    expiresAt: ttl !== void 0 ? timestamp + ttl : existingTtlDuration !== void 0 ? timestamp + existingTtlDuration : void 0,
+    staleAt: staleTime !== void 0 ? timestamp + staleTime : existingStaleDuration !== void 0 ? timestamp + existingStaleDuration : void 0
+  };
+}
 function updateAccessOrder(state, key) {
   const index = metadata.accessOrder.indexOf(key);
   if (index > -1) {
@@ -1514,7 +1579,7 @@ var useQuery = (route, args) => {
     [fetchHandler, variables]
   );
   const fetchMore = (0, import_react5.useCallback)(
-    async (fetchMoreVariables, concat, paginationKey) => {
+    async (fetchMoreVariables, concat = "start", paginationKey) => {
       try {
         const fetchMoreController = new AbortController();
         const res = await service_default(
@@ -1535,6 +1600,7 @@ var useQuery = (route, args) => {
           }
           responseData = extractResponseData(responseData, resolvedDataPath);
           if (concat === "start") {
+            console.log(">>>>>>>>>Start");
             dispatch(actions2.prepend({ key, value: responseData }));
           } else if (concat === "end") {
             dispatch(actions2.append({ key, value: responseData }));

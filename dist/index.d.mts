@@ -371,16 +371,22 @@ declare const actions$1: _reduxjs_toolkit.CaseReducerActions<{
     }>): void;
     prepend(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
         key: string;
-        value: any[];
+        value: any;
+        ttl?: number;
+        staleTime?: number;
     }>): void;
     append(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
         key: string;
-        value: any[];
+        value: any;
+        ttl?: number;
+        staleTime?: number;
     }>): void;
     paginate(state: immer.WritableDraft<CacheState>, action: PayloadAction<{
         key: string;
         data: any;
         paginationKey: string;
+        ttl?: number;
+        staleTime?: number;
     }>): void;
     remove(state: immer.WritableDraft<CacheState>, action: PayloadAction<string>): void;
     clear: () => CacheState;

@@ -257,7 +257,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const fetchMore = useCallback(
     async (
       fetchMoreVariables?: Record<string, any>,
-      concat?: "start" | "end" | "pagination",
+      concat: "start" | "end" | "pagination" = "start",
       paginationKey?: string
     ) => {
       try {
@@ -290,6 +290,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           responseData = extractResponseData(responseData, resolvedDataPath);
 
           if (concat === "start") {
+            console.log(">>>>>>>>>Start");
             dispatch(actions.prepend({ key, value: responseData }));
           } else if (concat === "end") {
             dispatch(actions.append({ key, value: responseData }));
