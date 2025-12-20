@@ -280,20 +280,29 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           : undefined;
 
         if (isSuccessStatus(res.status)) {
+
+          let responseData = res.data
+          // Apply response decryption if enabled
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
+
+          responseData = extractResponseData(responseData, resolvedDataPath);
+
           if (concat === "start") {
-            dispatch(actions.prepend({ key, value: res.data.data }));
+            dispatch(actions.prepend({ key, value: responseData }));
           } else if (concat === "end") {
-            dispatch(actions.append({ key, value: res.data.data }));
+            dispatch(actions.append({ key, value: responseData }));
           } else if (concat === "pagination") {
             dispatch(
               actions.paginate({
                 key,
-                data: res.data.data,
+                data: responseData,
                 paginationKey: paginationKey || "data",
               })
             );
           }
-          return { data: res.data.data };
+          return { data: responseData };
         } else if (isAuthError(res.status)) {
           // Auth error - clear authentication
           app.clearAuth();
@@ -378,6 +387,9 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       },
       append: (newData: any) => {
         cache.append(key, newData);
+      },
+      updateOrPrepend:(value:any)=>{
+        cache.updateOrPrepend(key, value)
       },
     }),
     [key, cache, idRef]

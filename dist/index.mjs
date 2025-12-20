@@ -67,7 +67,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 // src/hooks/use-query.tsx
-import { useEffect as useEffect4, useMemo as useMemo3, useRef, useCallback as useCallback3 } from "react";
+import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef2, useCallback as useCallback3 } from "react";
 
 // src/utils/service.ts
 import axios from "axios";
@@ -260,6 +260,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 import NetInfo from "@react-native-community/netinfo";
@@ -315,6 +316,7 @@ var actions = appSlice.actions;
 var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
+import { Animated } from "react-native";
 import { jsx } from "react/jsx-runtime";
 var AppContext = createContext(void 0);
 var useApp = () => {
@@ -328,6 +330,7 @@ var AppProvider = ({ children }) => {
   const state = use_selector_default((appState) => appState.app);
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((internetState) => {
       setConnected(!!internetState.isInternetReachable);
@@ -343,7 +346,8 @@ var AppProvider = ({ children }) => {
       setUser: (payload) => dispatch(actions.setUser(payload)),
       setEmail: (payload) => dispatch(actions.setEmail(payload)),
       setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
-      clearAuth: () => dispatch(actions.clearAuth())
+      clearAuth: () => dispatch(actions.clearAuth()),
+      scrollY
     }),
     [state, connected, dispatch]
   );
@@ -1266,8 +1270,8 @@ var useQuery = (route, args) => {
   const thread = use_selector_default((state) => state.thread[key]);
   const dispatch = use_dispatch_default();
   const { connected } = useSocket();
-  const timeoutRef = useRef(null);
-  const abortControllerRef = useRef(null);
+  const timeoutRef = useRef2(null);
+  const abortControllerRef = useRef2(null);
   useEffect4(() => {
     if ((data == null ? void 0 : data.data) && onCompleted) {
       onCompleted(data == null ? void 0 : data.data);
@@ -1505,6 +1509,9 @@ var useQuery = (route, args) => {
       },
       append: (newData) => {
         cache.append(key, newData);
+      },
+      updateOrPrepend: (value) => {
+        cache.updateOrPrepend(key, value);
       }
     }),
     [key, cache, idRef]
@@ -1687,7 +1694,7 @@ var useQueryAsync = () => {
 var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
-import { useState as useState4, useCallback as useCallback4, useRef as useRef2, useEffect as useEffect5 } from "react";
+import { useState as useState4, useCallback as useCallback4, useRef as useRef3, useEffect as useEffect5 } from "react";
 import { Keyboard } from "react-native";
 var useMutation = (route, option) => {
   const [loading, setLoading] = useState4(false);
@@ -1700,7 +1707,7 @@ var useMutation = (route, option) => {
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
-  const abortControllerRef = useRef2(null);
+  const abortControllerRef = useRef3(null);
   useEffect5(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -1791,7 +1798,7 @@ var useMutation = (route, option) => {
 var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
-import { useState as useState5, useCallback as useCallback5, useRef as useRef3, useEffect as useEffect6 } from "react";
+import { useState as useState5, useCallback as useCallback5, useRef as useRef4, useEffect as useEffect6 } from "react";
 import { Keyboard as Keyboard2 } from "react-native";
 var useMutationAsync = (route, option) => {
   const [loading, setLoading] = useState5(false);
@@ -1803,7 +1810,7 @@ var useMutationAsync = (route, option) => {
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
-  const abortControllerRef = useRef3(null);
+  const abortControllerRef = useRef4(null);
   useEffect6(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -2147,10 +2154,10 @@ function getOfflineQueue() {
 }
 
 // src/hooks/utils/refetch-manager.ts
-import { useEffect as useEffect7, useRef as useRef4 } from "react";
+import { useEffect as useEffect7, useRef as useRef5 } from "react";
 import { AppState } from "react-native";
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = useRef4(AppState.currentState);
+  const appState = useRef5(AppState.currentState);
   useEffect7(() => {
     if (!enabled) return;
     const subscription = AppState.addEventListener("change", (nextAppState) => {
@@ -2166,7 +2173,7 @@ function useRefetchOnFocus(enabled, refetch) {
 }
 function useRefetchOnReconnect(enabled, refetch) {
   const { connected } = useSocket();
-  const prevConnected = useRef4(connected);
+  const prevConnected = useRef5(connected);
   useEffect7(() => {
     if (enabled && connected && !prevConnected.current) {
       refetch();

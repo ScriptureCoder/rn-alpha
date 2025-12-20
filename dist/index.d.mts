@@ -8,6 +8,7 @@ import { Reducer, PayloadAction, Store } from '@reduxjs/toolkit';
 export { createSlice } from '@reduxjs/toolkit';
 import React, { ReactNode } from 'react';
 import * as immer from 'immer';
+import { Animated } from 'react-native';
 
 declare const PATHS: {
     login: string;
@@ -145,6 +146,7 @@ interface QueryResult {
     deleteItem: (id: string) => void;
     prepend: (data: any) => void;
     append: (data: any) => void;
+    updateOrPrepend: (data: any) => void;
     abort: () => void;
     optimisticUpdate: (updater: (current: any) => any, rollback?: () => void) => () => void;
     timing?: TimingInfo;
@@ -422,6 +424,7 @@ interface AppContextValue {
     connected: boolean;
     deviceId: string;
     email: string;
+    scrollY: Animated.Value;
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
     setColorMode: (payload: Partial<CoreAppState['colorMode']>) => void;
     setUser: (payload: any) => void;

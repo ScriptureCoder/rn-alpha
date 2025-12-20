@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, ReactNode, useEffect, useState, useCallback } from 'react';
 import { AlphaConfig, DEFAULT_CONFIG } from '../../config';
-import { setMaxCacheSize } from '../reducers/cache-reducer';
+import { setMaxCacheSize } from 'store/reducers';
 import { enableGlobalDebug, disableGlobalDebug } from 'hooks/utils/debug-logger';
 import { setHttpConfig } from 'utils/service';
 import { setEncryptionConfig } from 'utils/crypto';

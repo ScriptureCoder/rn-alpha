@@ -417,6 +417,7 @@ var actions = appSlice.actions;
 var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
+var import_react_native = require("react-native");
 var import_jsx_runtime = require("react/jsx-runtime");
 var AppContext = (0, import_react.createContext)(void 0);
 var useApp = () => {
@@ -430,6 +431,7 @@ var AppProvider = ({ children }) => {
   const state = use_selector_default((appState) => appState.app);
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = (0, import_react.useState)(false);
+  const scrollY = (0, import_react.useRef)(new import_react_native.Animated.Value(0)).current;
   (0, import_react.useEffect)(() => {
     const unsubscribe = import_netinfo.default.addEventListener((internetState) => {
       setConnected(!!internetState.isInternetReachable);
@@ -445,7 +447,8 @@ var AppProvider = ({ children }) => {
       setUser: (payload) => dispatch(actions.setUser(payload)),
       setEmail: (payload) => dispatch(actions.setEmail(payload)),
       setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
-      clearAuth: () => dispatch(actions.clearAuth())
+      clearAuth: () => dispatch(actions.clearAuth()),
+      scrollY
     }),
     [state, connected, dispatch]
   );
@@ -1602,6 +1605,9 @@ var useQuery = (route, args) => {
       },
       append: (newData) => {
         cache.append(key, newData);
+      },
+      updateOrPrepend: (value) => {
+        cache.updateOrPrepend(key, value);
       }
     }),
     [key, cache, idRef]
@@ -1785,7 +1791,7 @@ var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
 var import_react6 = require("react");
-var import_react_native = require("react-native");
+var import_react_native2 = require("react-native");
 var useMutation = (route, option) => {
   const [loading, setLoading] = (0, import_react6.useState)(false);
   const [error, setError] = (0, import_react6.useState)(void 0);
@@ -1809,7 +1815,7 @@ var useMutation = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          import_react_native.Keyboard.dismiss();
+          import_react_native2.Keyboard.dismiss();
         }
         const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
@@ -1889,7 +1895,7 @@ var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
 var import_react7 = require("react");
-var import_react_native2 = require("react-native");
+var import_react_native3 = require("react-native");
 var useMutationAsync = (route, option) => {
   const [loading, setLoading] = (0, import_react7.useState)(false);
   const [error, setError] = (0, import_react7.useState)(void 0);
@@ -1912,7 +1918,7 @@ var useMutationAsync = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          import_react_native2.Keyboard.dismiss();
+          import_react_native3.Keyboard.dismiss();
         }
         const [method, pathTemplate] = route.split(":/");
         const variablesCopy = { ...variables };
@@ -2245,12 +2251,12 @@ function getOfflineQueue() {
 
 // src/hooks/utils/refetch-manager.ts
 var import_react8 = require("react");
-var import_react_native3 = require("react-native");
+var import_react_native4 = require("react-native");
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = (0, import_react8.useRef)(import_react_native3.AppState.currentState);
+  const appState = (0, import_react8.useRef)(import_react_native4.AppState.currentState);
   (0, import_react8.useEffect)(() => {
     if (!enabled) return;
-    const subscription = import_react_native3.AppState.addEventListener("change", (nextAppState) => {
+    const subscription = import_react_native4.AppState.addEventListener("change", (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === "active") {
         refetch();
       }

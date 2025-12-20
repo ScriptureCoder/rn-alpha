@@ -64,6 +64,7 @@ export interface QueryResult {
   deleteItem: (id: string) => void;
   prepend: (data: any) => void;
   append: (data: any) => void;
+  updateOrPrepend: (data: any) => void;
   abort: () => void;
   // NEW: Optimistic updates
   optimisticUpdate: (

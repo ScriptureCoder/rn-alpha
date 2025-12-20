@@ -2,13 +2,14 @@ import React, {
     createContext,
     useContext,
     useEffect,
-    useMemo,
+    useMemo, useRef,
     useState,
 } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import useSelector from '../../hooks/use-selector';
 import useDispatch from '../../hooks/use-dispatch';
 import { actions, CoreAppState } from '../reducers/app-reducer';
+import {Animated} from "react-native";
 
 /**
  * Core app context type
@@ -22,6 +23,7 @@ export interface AppContextValue {
     connected: boolean;
     deviceId: string;
     email: string;
+    scrollY: Animated.Value
 
     // Core actions
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
@@ -73,6 +75,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const state = useSelector((appState) => appState.app);
     const dispatch = useDispatch();
     const [connected, setConnected] = useState(false);
+    const scrollY = useRef(new Animated.Value(0)).current
 
     // Network connectivity monitoring
     useEffect(() => {
@@ -93,6 +96,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             setEmail: (payload) => dispatch(actions.setEmail(payload)),
             setDeviceId: (payload) => dispatch(actions.setDeviceId(payload)),
             clearAuth: () => dispatch(actions.clearAuth()),
+            scrollY
         }),
         [state, connected, dispatch]
     );
