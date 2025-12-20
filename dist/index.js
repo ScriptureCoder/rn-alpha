@@ -1529,20 +1529,25 @@ var useQuery = (route, args) => {
         );
         const error = !isSuccessStatus(res.status) ? extractErrorMessage(res) : void 0;
         if (isSuccessStatus(res.status)) {
+          let responseData = res.data;
+          if (encryptionOptions && responseData) {
+            responseData = applyResponseDecryption(responseData, encryptionOptions);
+          }
+          responseData = extractResponseData(responseData, resolvedDataPath);
           if (concat === "start") {
-            dispatch(actions2.prepend({ key, value: res.data.data }));
+            dispatch(actions2.prepend({ key, value: responseData }));
           } else if (concat === "end") {
-            dispatch(actions2.append({ key, value: res.data.data }));
+            dispatch(actions2.append({ key, value: responseData }));
           } else if (concat === "pagination") {
             dispatch(
               actions2.paginate({
                 key,
-                data: res.data.data,
+                data: responseData,
                 paginationKey: paginationKey || "data"
               })
             );
           }
-          return { data: res.data.data };
+          return { data: responseData };
         } else if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
