@@ -257,7 +257,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const fetchMore = useCallback(
     async (
       fetchMoreVariables?: Record<string, any>,
-      concat: "start" | "end" | "pagination" = "start",
+      concat: "start" | "end" | "pagination" = "end",
       paginationKey?: string
     ) => {
       try {

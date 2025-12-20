@@ -51,7 +51,6 @@ const cacheSlice = createSlice({
               expiresAt: ttl ? timestamp + ttl : undefined,
               staleAt: staleTime !== undefined ? timestamp + staleTime : undefined,
             };
-            console.log(key, {entry});
             state[key] = entry;
         },
         prepend(state, action: PayloadAction<{ key:string, value:any, ttl?:number, staleTime?:number }>) {
@@ -65,13 +64,11 @@ const cacheSlice = createSlice({
             const incomingData = normalizeToArray(value);
             // const currentData = normalizeToArray(existingData);
             // const { expiresAt, staleAt } = calculateExpiry(existingEntry, timestamp, ttl, staleTime);
-            const newEntry = {
-                ...(entry||{}),
-                data: [ ...incomingData, ...(entry.data||[])],
-                timestamp,
-            }
-            console.log({newEntry});
-            state[key] = newEntry;
+            state[key] = {
+              ...(entry || {}),
+              data: [...incomingData, ...(entry.data || [])],
+              timestamp,
+            };
         },
         append(state, action: PayloadAction<{ key:string, value:any, ttl?:number, staleTime?:number }>) {
             const timestamp = Date.now();

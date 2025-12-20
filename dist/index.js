@@ -493,23 +493,10 @@ var cacheSlice = (0, import_toolkit2.createSlice)({
       updateAccessOrder(state, key);
       const entry = state[key];
       const incomingData = normalizeToArray(value);
-      console.log({ key, incomingData, entry });
-      console.log(
-        {
-          ...entry || {},
-          data: [...incomingData, ...entry.data || []],
-          ndata: incomingData,
-          // data: [ ...incomingData, ...(entry.data||[])],
-          timestamp
-        }
-      );
       state[key] = {
-        // ...(entry||{}),
-        data: [...incomingData],
-        // data: [ ...incomingData, ...(entry.data||[])],
+        ...entry || {},
+        data: [...incomingData, ...entry.data || []],
         timestamp
-        // expiresAt,
-        // staleAt,
       };
     },
     append(state, action) {
@@ -1579,7 +1566,7 @@ var useQuery = (route, args) => {
     [fetchHandler, variables]
   );
   const fetchMore = (0, import_react5.useCallback)(
-    async (fetchMoreVariables, concat = "start", paginationKey) => {
+    async (fetchMoreVariables, concat = "end", paginationKey) => {
       try {
         const fetchMoreController = new AbortController();
         const res = await service_default(
