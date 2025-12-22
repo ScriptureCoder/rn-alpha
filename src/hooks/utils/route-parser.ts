@@ -2,6 +2,7 @@ import { Route } from "../../types";
 import { Method } from "../../utils/service";
 import PATHS from "../../paths";
 import { getHttpConfig } from "../../utils/service";
+import {NetworkPolicy} from "hooks/constants";
 
 export interface ParsedRoute {
   path: string;
@@ -15,41 +16,43 @@ export interface ParsedRoute {
  * @param route - The route key from PATHS or a raw route string
  * @param variables - Object containing path parameters and query variables
  * @param authId - The customer ID to inject into paths
+ * @param networkPolicy
  * @returns ParsedRoute object with path, method, key, and rawPath
  */
 export function parseRoute(
   route: Route,
   variables: Record<string, any> = {},
-  authId?: string
+  authId?: string,
+  networkPolicy?: NetworkPolicy
 ): ParsedRoute {
   const config = getHttpConfig();
-  
+
   // Merge default PATHS with custom paths (custom takes precedence)
-  const allPaths = { 
-    ...PATHS, 
-    ...(config.paths || {}) 
+  const allPaths = {
+    ...PATHS,
+    ...(config.paths || {})
   };
-  
+
   const rawPath = allPaths[route] || route;
   const [method, pathTemplate] = rawPath.split(":/");
-  
+
   // Clone variables to avoid mutation
   const variablesCopy = { ...variables };
-  
+
   // Replace path parameters
   const path = "/" + pathTemplate.replace(/:\w+/g, (matched: string) => {
     const params = { authId, ...variablesCopy };
     const paramName = matched.replace(/\W/g, "");
-    
+
     // Remove from variables copy so it's not added to query string
     delete variablesCopy[paramName];
-    
+
     return params[paramName as keyof typeof params] || matched;
   });
-  
+
   // Generate cache key
-  const key = path + JSON.stringify(variablesCopy);
-  
+  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? new Date().getTime() : "");
+
   return {
     path,
     method: (method as Method) || "GET",

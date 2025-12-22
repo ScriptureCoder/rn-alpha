@@ -41,7 +41,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
-  const { key, path, method } = cache.getContext(route, variables);
+  const { key, path, method } = cache.getContext(route, variables, networkPolicy);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
   const [config] = useAlphaConfig();
 

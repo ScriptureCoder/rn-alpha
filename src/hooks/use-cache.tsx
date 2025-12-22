@@ -6,6 +6,7 @@ import { actions } from "store/reducers/cache-reducer";
 import { Route } from "types";
 import { parseRoute } from "hooks/utils";
 import { CacheOperations } from "./types";
+import {NetworkPolicy} from "hooks/constants";
 
 /**
  * Helper function to get the ID from an item
@@ -29,8 +30,8 @@ const useCache = (): CacheOperations => {
      * Parses a route and generates cache key with context
      */
     const getContext = useCallback(
-        (route: Route, variables?: Record<string, any>) => {
-            return parseRoute(route, variables, userId);
+        (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy) => {
+            return parseRoute(route, variables, userId, networkPolicy);
         },
         [userId]
     );

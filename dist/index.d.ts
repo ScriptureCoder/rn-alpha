@@ -194,7 +194,7 @@ type MutationResult<T = any> = [
 interface CacheOperations {
     setCache: (key: string, value: any) => void;
     getKey: (route: Route, variables?: Record<string, any>) => string;
-    getContext: (route: Route, variables?: Record<string, any>) => {
+    getContext: (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy) => {
         key: string;
         method: string;
         path: string;

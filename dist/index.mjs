@@ -383,7 +383,6 @@ var cacheSlice = createSlice2({
         expiresAt: ttl ? timestamp + ttl : void 0,
         staleAt: staleTime !== void 0 ? timestamp + staleTime : void 0
       };
-      console.log(key, { entry });
       state[key] = entry;
     },
     prepend(state, action) {
@@ -525,7 +524,7 @@ var PATHS = {
 var paths_default = PATHS;
 
 // src/hooks/utils/route-parser.ts
-function parseRoute(route, variables = {}, authId) {
+function parseRoute(route, variables = {}, authId, networkPolicy) {
   const config2 = getHttpConfig();
   const allPaths = {
     ...paths_default,
@@ -540,7 +539,7 @@ function parseRoute(route, variables = {}, authId) {
     delete variablesCopy[paramName];
     return params[paramName] || matched;
   });
-  const key = path + JSON.stringify(variablesCopy);
+  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? (/* @__PURE__ */ new Date()).getTime() : "");
   return {
     path,
     method: method || "GET",
@@ -604,8 +603,8 @@ var useCache = () => {
   const { auth: { userId } } = useApp();
   const cacheState = use_selector_default((state) => state.cache);
   const getContext = useCallback(
-    (route, variables) => {
-      return parseRoute(route, variables, userId);
+    (route, variables, networkPolicy) => {
+      return parseRoute(route, variables, userId, networkPolicy);
     },
     [userId]
   );
@@ -1313,7 +1312,7 @@ var useQuery = (route, args) => {
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
-  const { key, path, method } = cache.getContext(route, variables);
+  const { key, path, method } = cache.getContext(route, variables, networkPolicy);
   const policy = networkPolicy || "cache-first";
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(encrypted, config2.defaultEncryption);
