@@ -131,6 +131,7 @@ export interface CacheOperations {
     method: string;
     path: string;
     rawPath: string;
+    variables: Record<string, any>;
   };
   getData: (key: string) => any;
   getItem: (key: string, id: string, idRef?:string) => any;

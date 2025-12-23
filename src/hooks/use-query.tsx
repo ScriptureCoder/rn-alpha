@@ -37,11 +37,11 @@ import {
  * @returns QueryResult with data, loading state, and cache manipulation functions
  */
 const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
+  const { variables: initVariables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
-  const { key, path, method } = cache.getContext(route, variables, networkPolicy);
+  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
   const [config] = useAlphaConfig();
 

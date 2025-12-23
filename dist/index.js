@@ -645,7 +645,8 @@ function parseRoute(route, variables = {}, authId, networkPolicy) {
     path,
     method: method || "GET",
     key,
-    rawPath
+    rawPath,
+    variables: variablesCopy
   };
 }
 
@@ -1404,11 +1405,11 @@ function applyResponseDecryption(data, options) {
 
 // src/hooks/use-query.tsx
 var useQuery = (route, args) => {
-  const { variables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
+  const { variables: initVariables = {}, networkPolicy, init, onCompleted, onError, encrypted, dataPath, idRef } = args || {};
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
-  const { key, path, method } = cache.getContext(route, variables, networkPolicy);
+  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy);
   const policy = networkPolicy || "cache-first";
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(encrypted, config2.defaultEncryption);

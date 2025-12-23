@@ -9,6 +9,7 @@ export interface ParsedRoute {
   method: Method;
   key: string;
   rawPath: string;
+  variables: Record<string, any>;
 }
 
 /**
@@ -58,6 +59,7 @@ export function parseRoute(
     method: (method as Method) || "GET",
     key,
     rawPath,
+    variables: variablesCopy
   };
 }
 
