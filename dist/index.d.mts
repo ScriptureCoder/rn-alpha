@@ -188,6 +188,12 @@ type MutationResult<T = any> = [
         cancel: () => void;
     }
 ];
+type MutationAsyncResult<T = any> = [
+    (variables: Record<string, any>) => Promise<MutationResponse<T>>,
+    {
+        cancel: () => void;
+    }
+];
 /**
  * Cache operations interface
  */
@@ -256,13 +262,12 @@ declare const useQueryAsync: () => UseQueryAsyncReturn;
 declare const useMutation: <T = any>(route: Route, option?: MutationOptions) => MutationResult<T>;
 
 /**
- * Custom hook for async mutations with extended functionality
- * Unlike useMutation, this version uses route string directly (legacy support)
- * @param route - The raw API route string (e.g., "POST:/endpoint/:param")
- * @param option - Mutation options (keyboard dismiss)
+ * Custom hook for data mutations (POST, PUT, DELETE operations)
+ * @param route - The API route key
+ * @param option - Mutation options (keyboard dismiss, text response)
  * @returns MutationResult with mutate function, loading state, error, and data
  */
-declare const useMutationAsync: <T = any>(route: string, option?: MutationOptions) => MutationResult<T>;
+declare const useMutationAsync: <T = any>(route: Route, option?: MutationOptions) => MutationAsyncResult<T>;
 
 declare const _default$4: () => redux_thunk.ThunkDispatch<any, undefined, redux.UnknownAction> & redux.Dispatch<redux.UnknownAction>;
 

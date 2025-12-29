@@ -120,6 +120,13 @@ export type MutationResult<T = any> = [
   }
 ];
 
+export type MutationAsyncResult<T = any> = [
+  (variables: Record<string, any>) => Promise<MutationResponse<T>>,
+  {
+    cancel: () => void;
+  }
+];
+
 /**
  * Cache operations interface
  */

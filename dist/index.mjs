@@ -1856,15 +1856,12 @@ var useMutation = (route, option) => {
 var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
-import { useState as useState5, useCallback as useCallback5, useRef as useRef4, useEffect as useEffect6 } from "react";
+import { useCallback as useCallback5, useRef as useRef4, useEffect as useEffect6 } from "react";
 import { Keyboard as Keyboard2 } from "react-native";
 var useMutationAsync = (route, option) => {
-  const [loading, setLoading] = useState5(false);
-  const [error, setError] = useState5(void 0);
-  const [data, setData] = useState5(void 0);
-  const [status, setStatus] = useState5(void 0);
   const app = useApp();
   const { auth } = app;
+  const { getContext } = use_cache_default();
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
@@ -1882,67 +1879,48 @@ var useMutationAsync = (route, option) => {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
           Keyboard2.dismiss();
         }
-        const [method, pathTemplate] = route.split(":/");
-        const variablesCopy = { ...variables };
-        const path = "/" + pathTemplate.replace(/:\w+/g, (matched) => {
-          const paramName = matched.replace(/\W/g, "");
-          const value = variablesCopy[paramName];
-          delete variablesCopy[paramName];
-          return value || matched;
-        });
+        const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
         abortControllerRef.current = new AbortController();
-        setLoading(true);
-        setError(void 0);
-        setStatus(void 0);
-        const requestData = encryptionOptions ? applyRequestEncryption(variablesCopy, encryptionOptions) : variablesCopy;
+        const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
         const res = await service_default(
           path,
           method || "POST",
           requestData,
           {
             returnStatus: true,
-            auth: auth.accessToken,
+            auth: auth == null ? void 0 : auth.accessToken,
+            returnText: option == null ? void 0 : option.text,
             signal: abortControllerRef.current.signal
           }
         );
         if (isSuccessStatus(res.status)) {
-          let responseData = extractResponseData(res.data, resolvedDataPath);
+          let responseData = res.data;
           if (encryptionOptions && responseData) {
             responseData = applyResponseDecryption(responseData, encryptionOptions);
           }
-          setData(responseData);
-          setStatus(res.status);
-          setLoading(false);
+          responseData = extractResponseData(responseData, resolvedDataPath);
           return createSuccessResponse(responseData, res.status);
         }
+        let errorMessage = extractErrorMessage(res);
         if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
             Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
           }
         }
-        const errorMessage = extractErrorMessage(res);
-        setError(errorMessage);
-        setStatus(res.status);
-        setLoading(false);
         return createErrorResponse(errorMessage, res.status);
       } catch (e) {
         if (isAbortError2(e)) {
-          setLoading(false);
-          setStatus(0);
-          return createErrorResponse("Request cancelled", 0);
+          return createErrorResponse("", 0);
         }
-        setLoading(false);
         const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
-        setError(errorMessage);
-        setStatus(500);
         return createErrorResponse(errorMessage, 500);
       }
     },
-    [route, option, auth, app, encryptionOptions, resolvedDataPath]
+    [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config2]
   );
   const cancel = useCallback5(() => {
     if (abortControllerRef.current) {
@@ -1953,10 +1931,6 @@ var useMutationAsync = (route, option) => {
   return [
     mutate,
     {
-      loading,
-      error,
-      data,
-      status,
       cancel
     }
   ];
