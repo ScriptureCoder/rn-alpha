@@ -719,7 +719,8 @@ var useCache = () => {
   );
   const getData = (0, import_react2.useCallback)(
     (key) => {
-      return cacheState[key];
+      var _a;
+      return (_a = cacheState[key]) == null ? void 0 : _a.data;
     },
     [cacheState]
   );
@@ -737,7 +738,8 @@ var useCache = () => {
   );
   const updateItem = (0, import_react2.useCallback)(
     (key, id, value, idRef) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const index = cache.findIndex((item) => getItemId(item, idRef) === id);
         if (index !== -1) {
@@ -751,7 +753,8 @@ var useCache = () => {
   );
   const getItem = (0, import_react2.useCallback)(
     (key, id, idRef) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         return cache.find((item) => getItemId(item, idRef) === id);
       }
@@ -761,7 +764,8 @@ var useCache = () => {
   );
   const updateValue = (0, import_react2.useCallback)(
     (key, arg, value) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, [arg]: value });
       }
@@ -770,7 +774,8 @@ var useCache = () => {
   );
   const updateValues = (0, import_react2.useCallback)(
     (key, values) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, ...values });
       }
@@ -779,9 +784,10 @@ var useCache = () => {
   );
   const prepend = (0, import_react2.useCallback)(
     (key, data) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
-        setCache(key, [data, ...cache]);
+        dispatch(actions2.prepend({ key, value: data }));
       } else {
         setCache(key, [data]);
       }
@@ -790,7 +796,8 @@ var useCache = () => {
   );
   const updateOrPrepend = (0, import_react2.useCallback)(
     (key, data, idRef) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const dataId = getItemId(data, idRef);
         const index = cache.findIndex((item) => getItemId(item, idRef) === dataId);
@@ -809,9 +816,10 @@ var useCache = () => {
   );
   const append = (0, import_react2.useCallback)(
     (key, data) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
-        setCache(key, [...cache, data]);
+        dispatch(actions2.append({ key, value: data }));
       } else {
         setCache(key, [data]);
       }
@@ -820,7 +828,8 @@ var useCache = () => {
   );
   const deleteItem = (0, import_react2.useCallback)(
     (key, id, idRef) => {
-      const cache = cacheState[key];
+      var _a;
+      const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         setCache(key, cache.filter((item) => getItemId(item, idRef) !== id));
       }

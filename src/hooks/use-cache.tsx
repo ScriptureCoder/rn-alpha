@@ -52,7 +52,7 @@ const useCache = (): CacheOperations => {
      */
     const getData = useCallback(
         (key: string) => {
-            return cacheState[key];
+            return cacheState[key]?.data;
         },
         [cacheState]
     );
@@ -82,7 +82,7 @@ const useCache = (): CacheOperations => {
      */
     const updateItem = useCallback(
         (key: string, id: string, value: any, idRef?:string) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 const index = cache.findIndex((item: any) => getItemId(item, idRef) === id);
                 if (index !== -1) {
@@ -100,7 +100,7 @@ const useCache = (): CacheOperations => {
      */
     const getItem = useCallback(
         (key: string, id: string, idRef?:string) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 return cache.find((item: any) => getItemId(item, idRef) === id);
             }
@@ -114,7 +114,7 @@ const useCache = (): CacheOperations => {
      */
     const updateValue = useCallback(
         (key: string, arg: string, value: any) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (!Array.isArray(cache) && typeof cache === "object") {
                 setCache(key, { ...cache, [arg]: value });
             }
@@ -127,7 +127,7 @@ const useCache = (): CacheOperations => {
      */
     const updateValues = useCallback(
         (key: string, values: Record<string, any>) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (!Array.isArray(cache) && typeof cache === "object") {
                 setCache(key, { ...cache, ...values });
             }
@@ -140,9 +140,9 @@ const useCache = (): CacheOperations => {
      */
     const prepend = useCallback(
         (key: string, data: any) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
-                setCache(key, [data, ...cache]);
+                dispatch(actions.prepend({ key, value:data }));
             } else {
                 setCache(key, [data]);
             }
@@ -155,7 +155,7 @@ const useCache = (): CacheOperations => {
      */
     const updateOrPrepend = useCallback(
         (key: string, data: any, idRef?:string) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 const dataId = getItemId(data, idRef);
                 const index = cache.findIndex((item: any) => getItemId(item, idRef) === dataId);
@@ -178,9 +178,9 @@ const useCache = (): CacheOperations => {
      */
     const append = useCallback(
         (key: string, data: any) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
-                setCache(key, [...cache, data]);
+                dispatch(actions.append({ key, value:data }));
             } else {
                 setCache(key, [data]);
             }
@@ -193,7 +193,7 @@ const useCache = (): CacheOperations => {
      */
     const deleteItem = useCallback(
         (key: string, id: string, idRef?:string) => {
-            const cache = cacheState[key];
+            const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 setCache(key, cache.filter((item: any) => getItemId(item, idRef) !== id));
             }
