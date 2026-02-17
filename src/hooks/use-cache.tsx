@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { useApp } from "store/contexts/app-context";
 import useDispatch from "./use-dispatch";
-import useSelector from "./use-selector";
 import { actions } from "store/reducers/cache-reducer";
 import { Route } from "types";
 import { parseRoute } from "hooks/utils";
 import { CacheOperations } from "./types";
 import {NetworkPolicy} from "hooks/constants";
+import {store} from "store/index";
 
 /**
  * Helper function to get the ID from an item
@@ -24,7 +24,7 @@ const getItemId = (item: any, idRef?:string): string | undefined => {
 const useCache = (): CacheOperations => {
     const dispatch = useDispatch();
     const { auth: { userId } } = useApp();
-    const cacheState = useSelector((state) => state.cache);
+    // const cacheState = useSelector((state) => state.cache);
 
     /**
      * Parses a route and generates cache key with context
@@ -52,9 +52,10 @@ const useCache = (): CacheOperations => {
      */
     const getData = useCallback(
         (key: string) => {
+            const cacheState = store.getState().cache;
             return cacheState[key]?.data;
         },
-        [cacheState]
+        []
     );
 
     /**
@@ -82,6 +83,7 @@ const useCache = (): CacheOperations => {
      */
     const updateItem = useCallback(
         (key: string, id: string, value: any, idRef?:string) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 const index = cache.findIndex((item: any) => getItemId(item, idRef) === id);
@@ -92,7 +94,7 @@ const useCache = (): CacheOperations => {
                 }
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -100,13 +102,14 @@ const useCache = (): CacheOperations => {
      */
     const getItem = useCallback(
         (key: string, id: string, idRef?:string) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 return cache.find((item: any) => getItemId(item, idRef) === id);
             }
             return undefined;
         },
-        [cacheState]
+        []
     );
 
     /**
@@ -114,12 +117,13 @@ const useCache = (): CacheOperations => {
      */
     const updateValue = useCallback(
         (key: string, arg: string, value: any) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (!Array.isArray(cache) && typeof cache === "object") {
                 setCache(key, { ...cache, [arg]: value });
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -127,12 +131,13 @@ const useCache = (): CacheOperations => {
      */
     const updateValues = useCallback(
         (key: string, values: Record<string, any>) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (!Array.isArray(cache) && typeof cache === "object") {
                 setCache(key, { ...cache, ...values });
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -140,6 +145,7 @@ const useCache = (): CacheOperations => {
      */
     const prepend = useCallback(
         (key: string, data: any) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 dispatch(actions.prepend({ key, value:data }));
@@ -147,7 +153,7 @@ const useCache = (): CacheOperations => {
                 setCache(key, [data]);
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -155,6 +161,7 @@ const useCache = (): CacheOperations => {
      */
     const updateOrPrepend = useCallback(
         (key: string, data: any, idRef?:string) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 const dataId = getItemId(data, idRef);
@@ -170,7 +177,7 @@ const useCache = (): CacheOperations => {
                 setCache(key, [data]);
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -178,6 +185,7 @@ const useCache = (): CacheOperations => {
      */
     const append = useCallback(
         (key: string, data: any) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 dispatch(actions.append({ key, value:data }));
@@ -185,7 +193,7 @@ const useCache = (): CacheOperations => {
                 setCache(key, [data]);
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -193,12 +201,13 @@ const useCache = (): CacheOperations => {
      */
     const deleteItem = useCallback(
         (key: string, id: string, idRef?:string) => {
+            const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
                 setCache(key, cache.filter((item: any) => getItemId(item, idRef) !== id));
             }
         },
-        [cacheState, setCache]
+        [setCache]
     );
 
     /**
@@ -220,6 +229,7 @@ const useCache = (): CacheOperations => {
             const regex =
                 typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
 
+            const cacheState = store.getState().cache;
             const keysToInvalidate = Object.keys(cacheState).filter((k) =>
                 regex.test(k)
             );
@@ -228,7 +238,7 @@ const useCache = (): CacheOperations => {
                 dispatch(actions.delete({ key }));
             });
         },
-        [cacheState, dispatch]
+        [dispatch]
     );
 
     /**
