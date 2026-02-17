@@ -595,6 +595,59 @@ function shouldRetry(error) {
   return true;
 }
 
+// src/store/create-store.ts
+init_storage();
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+var saveToLocalStorage = (state, key) => {
+  try {
+    storage_default.setItem(key, state);
+  } catch (e) {
+    console.error("[AlphaStore] Failed to save state:", e);
+  }
+};
+var loadFromLocalStorage = (key) => {
+  try {
+    const serializedState = storage_default.getItem(key);
+    if (serializedState === null) return void 0;
+    return serializedState;
+  } catch (e) {
+    console.warn("[AlphaStore] Failed to load state:", e);
+    return void 0;
+  }
+};
+function createAlphaStore(customReducers, options = {}) {
+  const {
+    persist = true,
+    storageKey = "_alpha_state"
+  } = options;
+  const rootReducer = combineReducers({
+    // Core reducers (always included)
+    cache: cache_reducer_default,
+    thread: thread_reducer_default,
+    app: app_reducer_default,
+    // Custom app reducers
+    ...customReducers
+  });
+  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
+  const store = configureStore({
+    reducer: rootReducer,
+    // Type assertion needed for dynamic reducer combination
+    preloadedState,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+      immutableCheck: false,
+      serializableCheck: false
+      // Allow non-serializable values
+    })
+  });
+  if (persist) {
+    store.subscribe(() => {
+      saveToLocalStorage(store.getState(), storageKey);
+    });
+  }
+  return store;
+}
+var defaultStore = createAlphaStore();
+
 // src/hooks/use-cache.tsx
 var getItemId = (item, idRef) => {
   return item[idRef] || (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
@@ -602,7 +655,6 @@ var getItemId = (item, idRef) => {
 var useCache = () => {
   const dispatch = use_dispatch_default();
   const { auth: { userId } } = useApp();
-  const cacheState = use_selector_default((state) => state.cache);
   const getContext = useCallback(
     (route, variables, networkPolicy) => {
       return parseRoute(route, variables, userId, networkPolicy);
@@ -619,9 +671,10 @@ var useCache = () => {
   const getData = useCallback(
     (key) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       return (_a = cacheState[key]) == null ? void 0 : _a.data;
     },
-    [cacheState]
+    []
   );
   const setCache = useCallback(
     (key, value) => {
@@ -638,6 +691,7 @@ var useCache = () => {
   const updateItem = useCallback(
     (key, id, value, idRef) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const index = cache.findIndex((item) => getItemId(item, idRef) === id);
@@ -648,42 +702,46 @@ var useCache = () => {
         }
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const getItem = useCallback(
     (key, id, idRef) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         return cache.find((item) => getItemId(item, idRef) === id);
       }
       return void 0;
     },
-    [cacheState]
+    []
   );
   const updateValue = useCallback(
     (key, arg, value) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, [arg]: value });
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const updateValues = useCallback(
     (key, values) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, ...values });
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const prepend = useCallback(
     (key, data) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.prepend({ key, value: data }));
@@ -691,11 +749,12 @@ var useCache = () => {
         setCache(key, [data]);
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const updateOrPrepend = useCallback(
     (key, data, idRef) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const dataId = getItemId(data, idRef);
@@ -711,11 +770,12 @@ var useCache = () => {
         setCache(key, [data]);
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const append = useCallback(
     (key, data) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.append({ key, value: data }));
@@ -723,17 +783,18 @@ var useCache = () => {
         setCache(key, [data]);
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const deleteItem = useCallback(
     (key, id, idRef) => {
       var _a;
+      const cacheState = defaultStore.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         setCache(key, cache.filter((item) => getItemId(item, idRef) !== id));
       }
     },
-    [cacheState, setCache]
+    [setCache]
   );
   const invalidate = useCallback(
     (key) => {
@@ -744,6 +805,7 @@ var useCache = () => {
   const invalidateQueries = useCallback(
     (pattern) => {
       const regex = typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
+      const cacheState = defaultStore.getState().cache;
       const keysToInvalidate = Object.keys(cacheState).filter(
         (k) => regex.test(k)
       );
@@ -751,7 +813,7 @@ var useCache = () => {
         dispatch(actions2.delete({ key }));
       });
     },
-    [cacheState, dispatch]
+    [dispatch]
   );
   const invalidateAll = useCallback(() => {
     dispatch(actions2.clear());
@@ -2237,61 +2299,6 @@ function useRefetchInterval(enabled, refetch, interval) {
 // src/store/contexts/alpha-provider.tsx
 import { useMemo as useMemo4, useEffect as useEffect8 } from "react";
 import { Provider } from "react-redux";
-
-// src/store/create-store.ts
-init_storage();
-import { configureStore, combineReducers } from "@reduxjs/toolkit";
-var saveToLocalStorage = (state, key) => {
-  try {
-    storage_default.setItem(key, state);
-  } catch (e) {
-    console.error("[AlphaStore] Failed to save state:", e);
-  }
-};
-var loadFromLocalStorage = (key) => {
-  try {
-    const serializedState = storage_default.getItem(key);
-    if (serializedState === null) return void 0;
-    return serializedState;
-  } catch (e) {
-    console.warn("[AlphaStore] Failed to load state:", e);
-    return void 0;
-  }
-};
-function createAlphaStore(customReducers, options = {}) {
-  const {
-    persist = true,
-    storageKey = "_alpha_state"
-  } = options;
-  const rootReducer = combineReducers({
-    // Core reducers (always included)
-    cache: cache_reducer_default,
-    thread: thread_reducer_default,
-    app: app_reducer_default,
-    // Custom app reducers
-    ...customReducers
-  });
-  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
-  const store = configureStore({
-    reducer: rootReducer,
-    // Type assertion needed for dynamic reducer combination
-    preloadedState,
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-      immutableCheck: false,
-      serializableCheck: false
-      // Allow non-serializable values
-    })
-  });
-  if (persist) {
-    store.subscribe(() => {
-      saveToLocalStorage(store.getState(), storageKey);
-    });
-  }
-  return store;
-}
-var defaultStore = createAlphaStore();
-
-// src/store/contexts/alpha-provider.tsx
 import { jsx as jsx4 } from "react/jsx-runtime";
 var AlphaProvider = ({
   children,
