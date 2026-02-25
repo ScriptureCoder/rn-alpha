@@ -5,14 +5,14 @@ import { actions } from "store/reducers/cache-reducer";
 import { Route } from "types";
 import { parseRoute } from "hooks/utils";
 import { CacheOperations } from "./types";
-import {NetworkPolicy} from "hooks/constants";
-import {store} from "store/index";
+import { NetworkPolicy } from "hooks/constants";
+import { store } from "store/index";
 
 /**
  * Helper function to get the ID from an item
  * Checks both _id (MongoDB) and id (standard) fields
  */
-const getItemId = (item: any, idRef?:string): string | undefined => {
+const getItemId = (item: any, idRef?: string): string | undefined => {
     return item[idRef] || item?._id || item?.id;
 };
 
@@ -30,8 +30,8 @@ const useCache = (): CacheOperations => {
      * Parses a route and generates cache key with context
      */
     const getContext = useCallback(
-        (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy) => {
-            return parseRoute(route, variables, userId, networkPolicy);
+        (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy, instanceId?: string) => {
+            return parseRoute(route, variables, userId, networkPolicy, instanceId);
         },
         [userId]
     );
@@ -82,7 +82,7 @@ const useCache = (): CacheOperations => {
      * Updates a single item in a cached array
      */
     const updateItem = useCallback(
-        (key: string, id: string, value: any, idRef?:string) => {
+        (key: string, id: string, value: any, idRef?: string) => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
@@ -101,7 +101,7 @@ const useCache = (): CacheOperations => {
      * Gets a single item from a cached array
      */
     const getItem = useCallback(
-        (key: string, id: string, idRef?:string) => {
+        (key: string, id: string, idRef?: string) => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
@@ -148,7 +148,7 @@ const useCache = (): CacheOperations => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
-                dispatch(actions.prepend({ key, value:data }));
+                dispatch(actions.prepend({ key, value: data }));
             } else {
                 setCache(key, [data]);
             }
@@ -160,7 +160,7 @@ const useCache = (): CacheOperations => {
      * Updates an item if it exists, or prepends it if it doesn't
      */
     const updateOrPrepend = useCallback(
-        (key: string, data: any, idRef?:string) => {
+        (key: string, data: any, idRef?: string) => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
@@ -188,7 +188,7 @@ const useCache = (): CacheOperations => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {
-                dispatch(actions.append({ key, value:data }));
+                dispatch(actions.append({ key, value: data }));
             } else {
                 setCache(key, [data]);
             }
@@ -200,7 +200,7 @@ const useCache = (): CacheOperations => {
      * Deletes an item from a cached array
      */
     const deleteItem = useCallback(
-        (key: string, id: string, idRef?:string) => {
+        (key: string, id: string, idRef?: string) => {
             const cacheState = store.getState().cache;
             const cache = cacheState[key]?.data;
             if (Array.isArray(cache)) {

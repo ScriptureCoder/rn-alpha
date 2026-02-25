@@ -28,7 +28,7 @@ export interface QueryOptions {
   encrypted?: boolean | EncryptionOptions;
   // Response data path override
   dataPath?: string; // Override global dataPath for this query
-  idRef?:string;
+  idRef?: string;
   // Debug options
   debug?: boolean;
 }
@@ -133,7 +133,7 @@ export type MutationAsyncResult<T = any> = [
 export interface CacheOperations {
   setCache: (key: string, value: any) => void;
   getKey: (route: Route, variables?: Record<string, any>) => string;
-  getContext: (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy) => {
+  getContext: (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy, instanceId?: string) => {
     key: string;
     method: string;
     path: string;
@@ -141,15 +141,15 @@ export interface CacheOperations {
     variables: Record<string, any>;
   };
   getData: (key: string) => any;
-  getItem: (key: string, id: string, idRef?:string) => any;
+  getItem: (key: string, id: string, idRef?: string) => any;
   update: (key: string, data: any) => void;
   updateValue: (key: string, arg: string, value: any) => void;
   updateValues: (key: string, values: Record<string, any>) => void;
-  updateItem: (key: string, id: string, value: any, idRef?:string) => void;
-  deleteItem: (key: string, id: string, idRef?:string) => void;
+  updateItem: (key: string, id: string, value: any, idRef?: string) => void;
+  deleteItem: (key: string, id: string, idRef?: string) => void;
   prepend: (key: string, data: any) => void;
   append: (key: string, data: any) => void;
-  updateOrPrepend: (key: string, data: any, idRef?:string) => void;
+  updateOrPrepend: (key: string, data: any, idRef?: string) => void;
   // NEW: Invalidation methods
   invalidate: (key: string) => void;
   invalidateQueries: (pattern: string | RegExp) => void;

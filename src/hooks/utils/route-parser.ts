@@ -2,7 +2,7 @@ import { Route } from "../../types";
 import { Method } from "../../utils/service";
 import PATHS from "../../paths";
 import { getHttpConfig } from "../../utils/service";
-import {NetworkPolicy} from "hooks/constants";
+import { NetworkPolicy } from "hooks/constants";
 
 export interface ParsedRoute {
   path: string;
@@ -24,7 +24,8 @@ export function parseRoute(
   route: Route,
   variables: Record<string, any> = {},
   authId?: string,
-  networkPolicy?: NetworkPolicy
+  networkPolicy?: NetworkPolicy,
+  instanceId?: string
 ): ParsedRoute {
   const config = getHttpConfig();
 
@@ -52,7 +53,7 @@ export function parseRoute(
   });
 
   // Generate cache key
-  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? new Date().getTime() : "");
+  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? (instanceId ?? "_network-only") : "");
 
   return {
     path,

@@ -625,7 +625,7 @@ var PATHS = {
 var paths_default = PATHS;
 
 // src/hooks/utils/route-parser.ts
-function parseRoute(route, variables = {}, authId, networkPolicy) {
+function parseRoute(route, variables = {}, authId, networkPolicy, instanceId) {
   const config2 = getHttpConfig();
   const allPaths = {
     ...paths_default,
@@ -640,7 +640,7 @@ function parseRoute(route, variables = {}, authId, networkPolicy) {
     delete variablesCopy[paramName];
     return params[paramName] || matched;
   });
-  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? (/* @__PURE__ */ new Date()).getTime() : "");
+  const key = path + JSON.stringify(variablesCopy) + (networkPolicy === "network-only" ? instanceId != null ? instanceId : "_network-only" : "");
   return {
     path,
     method: method || "GET",
@@ -757,8 +757,8 @@ var useCache = () => {
   const dispatch = use_dispatch_default();
   const { auth: { userId } } = useApp();
   const getContext = (0, import_react2.useCallback)(
-    (route, variables, networkPolicy) => {
-      return parseRoute(route, variables, userId, networkPolicy);
+    (route, variables, networkPolicy, instanceId) => {
+      return parseRoute(route, variables, userId, networkPolicy, instanceId);
     },
     [userId]
   );
@@ -1480,7 +1480,8 @@ var useQuery = (route, args) => {
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
-  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy);
+  const instanceIdRef = (0, import_react5.useRef)(Date.now().toString() + Math.random().toString(36).substring(2, 7));
+  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy, instanceIdRef.current);
   const policy = networkPolicy || "cache-first";
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(encrypted, config2.defaultEncryption);

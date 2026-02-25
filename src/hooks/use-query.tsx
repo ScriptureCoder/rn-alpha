@@ -41,7 +41,8 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   const app = useApp();
   const { auth } = app;
   const cache = useCache();
-  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy);
+  const instanceIdRef = useRef<string>(Date.now().toString() + Math.random().toString(36).substring(2, 7));
+  const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy, instanceIdRef.current);
   const policy: NetworkPolicy = networkPolicy || "cache-first";
   const [config] = useAlphaConfig();
 
@@ -123,15 +124,15 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         case "cache-only":
           return;
         case "network-only":
-          fetchHandler(fetchVariables, true).catch(() => {});
+          fetchHandler(fetchVariables, true).catch(() => { });
           return;
         case "cache-first":
           if (!data) {
-            fetchHandler(fetchVariables).catch(() => {});
+            fetchHandler(fetchVariables).catch(() => { });
           }
           return;
         case "network-and-cache":
-          fetchHandler(fetchVariables).catch(() => {});
+          fetchHandler(fetchVariables).catch(() => { });
           timeoutRef.current = setTimeout(() => {
             const currentThread = thread;
             if (currentThread?.loading) {
@@ -144,11 +145,11 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           if (data && !isCacheExpired(data)) {
             // If data is stale, refetch in background
             if (isCacheStale(data)) {
-              fetchHandler(fetchVariables).catch(() => {});
+              fetchHandler(fetchVariables).catch(() => { });
             }
           } else {
             // No cache or expired, fetch normally
-            fetchHandler(fetchVariables).catch(() => {});
+            fetchHandler(fetchVariables).catch(() => { });
           }
           return;
       }
@@ -246,7 +247,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
    */
   const refetch = useCallback(
     (refetchVariables?: Record<string, any>) => {
-      fetchHandler({ ...variables, ...(refetchVariables || {}) }, true).catch(() => {});
+      fetchHandler({ ...variables, ...(refetchVariables || {}) }, true).catch(() => { });
     },
     [fetchHandler, variables]
   );
@@ -389,7 +390,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       append: (newData: any) => {
         cache.append(key, newData);
       },
-      updateOrPrepend:(value:any)=>{
+      updateOrPrepend: (value: any) => {
         cache.updateOrPrepend(key, value)
       },
     }),

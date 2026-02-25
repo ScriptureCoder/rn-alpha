@@ -200,7 +200,7 @@ type MutationAsyncResult<T = any> = [
 interface CacheOperations {
     setCache: (key: string, value: any) => void;
     getKey: (route: Route, variables?: Record<string, any>) => string;
-    getContext: (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy) => {
+    getContext: (route: Route, variables?: Record<string, any>, networkPolicy?: NetworkPolicy, instanceId?: string) => {
         key: string;
         method: string;
         path: string;
