@@ -1,7 +1,7 @@
 import http, { Method } from "../utils/service";
 import { useApp } from "store/contexts/app-context";
 import useDispatch from "./use-dispatch";
-import useSelector from "./use-selector";
+import { store } from "store/index";
 import { actions } from "store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import useCache from "./use-cache";
@@ -63,7 +63,6 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
   const { getContext } = useCache();
   const dispatch = useDispatch();
   const [config] = useAlphaConfig();
-  const cacheState = useSelector((state) => state.cache);
 
   /**
    * Performs an async query and updates cache and loading state
@@ -77,7 +76,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
     variables: Record<string, any> = {},
     options?: UseQueryAsyncOptions | string
   ): Promise<MutationResponse> => {
-    const { key, method, path } = getContext(route, variables);
+    const { key, method, path, variables: parsedVariables } = getContext(route, variables);
 
     // Handle backward compatibility (authToken as string)
     const opts: UseQueryAsyncOptions =
@@ -95,6 +94,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
     const policy: NetworkPolicy = opts.networkPolicy || "cache-first";
 
     // Get cached data
+    const cacheState = store.getState().cache;
     const cachedEntry = cacheState[key];
     const cachedData = getCacheData(cachedEntry);
 
@@ -116,8 +116,8 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
 
         // Apply request encryption if enabled
         const requestData = encryptionOptions
-          ? applyRequestEncryption(variables, encryptionOptions)
-          : variables;
+          ? applyRequestEncryption(parsedVariables, encryptionOptions)
+          : parsedVariables;
 
         // Perform the request
         const res: any = await http(
@@ -170,13 +170,13 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
           if (config.onAuthError) {
             Promise.resolve(config.onAuthError(res.status)).catch(console.error);
           }
-          
+
           const errorMessage = error || "Unauthorized";
           // Call onError callback
           if (opts.onError) {
             opts.onError(errorMessage, res.status);
           }
-          
+
           return createErrorResponse(errorMessage, res.status);
         }
 
@@ -266,7 +266,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
             opts.onCompleted(cachedData);
           }
           // Still make network request in background (fire and forget)
-          performNetworkRequest().catch(() => {});
+          performNetworkRequest().catch(() => { });
           return createSuccessResponse(cachedData, 200);
         }
         // No cache, fetch from network
@@ -281,7 +281,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
           }
           // If data is stale, refetch in background
           if (isCacheStale(cachedEntry)) {
-            performNetworkRequest().catch(() => {});
+            performNetworkRequest().catch(() => { });
           }
           return createSuccessResponse(cachedData, 200);
         }

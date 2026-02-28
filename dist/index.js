@@ -1764,13 +1764,13 @@ var useQueryAsync = () => {
   const { getContext } = use_cache_default();
   const dispatch = use_dispatch_default();
   const [config2] = useAlphaConfig();
-  const cacheState = use_selector_default((state) => state.cache);
   return async (route, variables = {}, options) => {
-    const { key, method, path } = getContext(route, variables);
+    const { key, method, path, variables: parsedVariables } = getContext(route, variables);
     const opts = typeof options === "string" ? { authToken: options } : options || {};
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
     const resolvedDataPath = opts.dataPath !== void 0 ? opts.dataPath : config2.dataPath;
     const policy = opts.networkPolicy || "cache-first";
+    const cacheState = defaultStore.getState().cache;
     const cachedEntry = cacheState[key];
     const cachedData = getCacheData(cachedEntry);
     const performNetworkRequest = async () => {
@@ -1784,7 +1784,7 @@ var useQueryAsync = () => {
             }
           })
         );
-        const requestData = encryptionOptions ? applyRequestEncryption(variables, encryptionOptions) : variables;
+        const requestData = encryptionOptions ? applyRequestEncryption(parsedVariables, encryptionOptions) : parsedVariables;
         const res = await service_default(
           path,
           method || "GET",
