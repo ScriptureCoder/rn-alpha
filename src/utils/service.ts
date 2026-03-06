@@ -230,14 +230,13 @@ async function http<T = any>(
   try {
     // Prepare headers
     const headers: Record<string, string> = {
-      'Content-Type': getContentTypeHeader(contentType),
-      // 'Content-Type': "application/x-www-form-urlencoded",
+      ...(currentConfig.headers || {}),
     };
 
     if (auth) {
       headers['Authorization'] = auth;
     }
-    console.log(headers, method, path);
+    console.log(JSON.stringify({ headers, method, path, data }, null, 2));
     // Prepare request config
     const config: AxiosRequestConfig = {
       method,
@@ -247,7 +246,6 @@ async function http<T = any>(
       timeout: timeout || 30000,
     };
 
-    console.log({data});
     // Handle data based on method and content type
     if (method === 'GET' && data) {
       // For GET, data becomes query params
@@ -256,19 +254,18 @@ async function http<T = any>(
       // For other methods, format body based on content type
       config.data = formatRequestData(data, contentType, method);
     }
-    console.log(config);
     // Make the request
     const response: AxiosResponse = await axiosInstance.request(config);
 
-    console.log(response);
+    console.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
     // Format response based on options
     if (returnStatus) {
       return {
         data: returnText
           ? response.data
           : typeof response.data === 'string'
-          ? response.data
-          : response.data,
+            ? response.data
+            : response.data,
         status: response.status,
       };
     }

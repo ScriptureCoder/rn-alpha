@@ -264,18 +264,6 @@ var formatFormData = (data) => {
   }
   return formData;
 };
-var getContentTypeHeader = (contentType) => {
-  switch (contentType) {
-    case "urlencoded":
-      return "application/x-www-form-urlencoded";
-    case "multipart":
-      return "multipart/form-data";
-    case "json":
-      return "application/json";
-    default:
-      return "application/text";
-  }
-};
 var formatRequestData = (data, contentType, method) => {
   if (method === "GET") {
     return void 0;
@@ -317,13 +305,12 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
   } = options;
   try {
     const headers = {
-      "Content-Type": getContentTypeHeader(contentType)
-      // 'Content-Type': "application/x-www-form-urlencoded",
+      ...currentConfig.headers || {}
     };
     if (auth) {
       headers["Authorization"] = auth;
     }
-    console.log(headers, method, path);
+    console.log(JSON.stringify({ headers, method, path, data }, null, 2));
     const config2 = {
       method,
       url: path,
@@ -331,15 +318,13 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       signal,
       timeout: timeout || 3e4
     };
-    console.log({ data });
     if (method === "GET" && data) {
       config2.params = data;
     } else {
       config2.data = formatRequestData(data, contentType, method);
     }
-    console.log(config2);
     const response = await axiosInstance.request(config2);
-    console.log(response);
+    console.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
     if (returnStatus) {
       return {
         data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data,
