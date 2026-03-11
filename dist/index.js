@@ -403,6 +403,7 @@ var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
 var import_react_native = require("react-native");
+var import_react_native_uuid = __toESM(require("react-native-uuid"));
 var import_jsx_runtime = require("react/jsx-runtime");
 var AppContext = (0, import_react.createContext)(void 0);
 var useApp = () => {
@@ -417,6 +418,11 @@ var AppProvider = ({ children }) => {
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = (0, import_react.useState)(false);
   const scrollY = (0, import_react.useRef)(new import_react_native.Animated.Value(0)).current;
+  (0, import_react.useEffect)(() => {
+    if (!state.deviceId) {
+      value.setDeviceId(import_react_native_uuid.default.v4());
+    }
+  }, [state.deviceId]);
   (0, import_react.useEffect)(() => {
     const unsubscribe = import_netinfo.default.addEventListener((internetState) => {
       setConnected(!!internetState.isInternetReachable);
@@ -2213,7 +2219,7 @@ function addJitter(delay, jitterFactor) {
 }
 
 // src/hooks/utils/offline-queue.ts
-var import_react_native_uuid = __toESM(require("react-native-uuid"));
+var import_react_native_uuid2 = __toESM(require("react-native-uuid"));
 var storage2;
 try {
   storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
@@ -2238,7 +2244,7 @@ var OfflineQueue = class {
   async enqueue(mutation) {
     const item = {
       ...mutation,
-      id: import_react_native_uuid.default.v4(),
+      id: import_react_native_uuid2.default.v4(),
       timestamp: Date.now(),
       retries: 0,
       maxRetries: DEFAULT_MAX_RETRIES

@@ -67,7 +67,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 // src/hooks/use-query.tsx
-import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef2, useCallback as useCallback3 } from "react";
+import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef2, useCallback as useCallback4 } from "react";
 
 // src/utils/service.ts
 import axios from "axios";
@@ -302,6 +302,7 @@ var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
 import { Animated } from "react-native";
+import uuid from "react-native-uuid";
 import { jsx } from "react/jsx-runtime";
 var AppContext = createContext(void 0);
 var useApp = () => {
@@ -316,6 +317,11 @@ var AppProvider = ({ children }) => {
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!state.deviceId) {
+      value.setDeviceId(uuid.v4());
+    }
+  }, [state.deviceId]);
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((internetState) => {
       setConnected(!!internetState.isInternetReachable);
@@ -495,7 +501,7 @@ var actions3 = threadSlice.actions;
 var thread_reducer_default = threadSlice.reducer;
 
 // src/hooks/use-cache.tsx
-import { useCallback } from "react";
+import { useCallback as useCallback2 } from "react";
 
 // src/paths.ts
 var PATHS = {
@@ -640,20 +646,20 @@ var getItemId = (item, idRef) => {
 var useCache = () => {
   const dispatch = use_dispatch_default();
   const { auth: { userId } } = useApp();
-  const getContext = useCallback(
+  const getContext = useCallback2(
     (route, variables, networkPolicy, instanceId) => {
       return parseRoute(route, variables, userId, networkPolicy, instanceId);
     },
     [userId]
   );
-  const getKey = useCallback(
+  const getKey = useCallback2(
     (route, variables) => {
       const { key } = getContext(route, variables);
       return key;
     },
     [getContext]
   );
-  const getData = useCallback(
+  const getData = useCallback2(
     (key) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -661,19 +667,19 @@ var useCache = () => {
     },
     []
   );
-  const setCache = useCallback(
+  const setCache = useCallback2(
     (key, value) => {
       dispatch(actions2.set({ key, value }));
     },
     [dispatch]
   );
-  const update = useCallback(
+  const update = useCallback2(
     (key, value) => {
       setCache(key, value);
     },
     [setCache]
   );
-  const updateItem = useCallback(
+  const updateItem = useCallback2(
     (key, id, value, idRef) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -689,7 +695,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const getItem = useCallback(
+  const getItem = useCallback2(
     (key, id, idRef) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -701,7 +707,7 @@ var useCache = () => {
     },
     []
   );
-  const updateValue = useCallback(
+  const updateValue = useCallback2(
     (key, arg, value) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -712,7 +718,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const updateValues = useCallback(
+  const updateValues = useCallback2(
     (key, values) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -723,7 +729,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const prepend = useCallback(
+  const prepend = useCallback2(
     (key, data) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -736,7 +742,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const updateOrPrepend = useCallback(
+  const updateOrPrepend = useCallback2(
     (key, data, idRef) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -757,7 +763,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const append = useCallback(
+  const append = useCallback2(
     (key, data) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -770,7 +776,7 @@ var useCache = () => {
     },
     [setCache]
   );
-  const deleteItem = useCallback(
+  const deleteItem = useCallback2(
     (key, id, idRef) => {
       var _a;
       const cacheState = defaultStore.getState().cache;
@@ -781,13 +787,13 @@ var useCache = () => {
     },
     [setCache]
   );
-  const invalidate = useCallback(
+  const invalidate = useCallback2(
     (key) => {
       dispatch(actions2.delete({ key }));
     },
     [dispatch]
   );
-  const invalidateQueries = useCallback(
+  const invalidateQueries = useCallback2(
     (pattern) => {
       const regex = typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
       const cacheState = defaultStore.getState().cache;
@@ -800,7 +806,7 @@ var useCache = () => {
     },
     [dispatch]
   );
-  const invalidateAll = useCallback(() => {
+  const invalidateAll = useCallback2(() => {
     dispatch(actions2.clear());
   }, [dispatch]);
   return {
@@ -950,7 +956,7 @@ var extractResponseData = (response, dataPath) => {
 };
 
 // src/store/contexts/config-context.tsx
-import { createContext as createContext3, useContext as useContext3, useMemo as useMemo2, useEffect as useEffect3, useState as useState3, useCallback as useCallback2 } from "react";
+import { createContext as createContext3, useContext as useContext3, useMemo as useMemo2, useEffect as useEffect3, useState as useState3, useCallback as useCallback3 } from "react";
 
 // src/hooks/utils/debug-logger.ts
 var QueryDebugger = class {
@@ -1197,7 +1203,7 @@ var ConfigProvider = ({ config: initialConfig, children }) => {
       }
     }));
   }, [initialConfig]);
-  const updateConfig = useCallback2((newConfig) => {
+  const updateConfig = useCallback3((newConfig) => {
     setInternalConfig((prev) => {
       const updated = {
         ...prev,
@@ -1405,7 +1411,7 @@ var useQuery = (route, args) => {
       dispatch(actions2.init({ key, value: init }));
     }
   }, [init == null ? void 0 : init.timestamp, key, dispatch, data == null ? void 0 : data.timestamp]);
-  const setThread = useCallback3(
+  const setThread = useCallback4(
     (loading, error, status) => {
       dispatch(
         actions3.set({
@@ -1420,7 +1426,7 @@ var useQuery = (route, args) => {
     },
     [dispatch, key]
   );
-  const fetchData = useCallback3(
+  const fetchData = useCallback4(
     (fetchVariables) => {
       switch (policy) {
         case "cache-only":
@@ -1460,7 +1466,7 @@ var useQuery = (route, args) => {
     },
     [policy, data, thread]
   );
-  const fetchHandler = useCallback3(
+  const fetchHandler = useCallback4(
     async (fetchVariables, isRefetch = false) => {
       try {
         if (!(thread == null ? void 0 : thread.loading) || (thread == null ? void 0 : thread.error) || isRefetch) {
@@ -1519,14 +1525,14 @@ var useQuery = (route, args) => {
     },
     [thread, setThread, path, method, auth.accessToken, onCompleted, onError, cache, key, app, encryptionOptions, resolvedDataPath, config2]
   );
-  const refetch = useCallback3(
+  const refetch = useCallback4(
     (refetchVariables) => {
       fetchHandler({ ...variables, ...refetchVariables || {} }, true).catch(() => {
       });
     },
     [fetchHandler, variables]
   );
-  const fetchMore = useCallback3(
+  const fetchMore = useCallback4(
     async (fetchMoreVariables, concat = "end", paginationKey) => {
       try {
         const fetchMoreController = new AbortController();
@@ -1580,14 +1586,14 @@ var useQuery = (route, args) => {
     },
     [path, method, variables, auth == null ? void 0 : auth.accessToken, dispatch, key, app, config2]
   );
-  const abort = useCallback3(() => {
+  const abort = useCallback4(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     cancelRequest(key);
   }, [key]);
-  const optimisticUpdate = useCallback3(
+  const optimisticUpdate = useCallback4(
     (updater, rollback) => {
       const currentData = data;
       const newData = updater(currentData);
@@ -1809,7 +1815,7 @@ var useQueryAsync = () => {
 var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
-import { useState as useState4, useCallback as useCallback4, useRef as useRef3, useEffect as useEffect5 } from "react";
+import { useState as useState4, useCallback as useCallback5, useRef as useRef3, useEffect as useEffect5 } from "react";
 import { Keyboard } from "react-native";
 var useMutation = (route, option) => {
   const [loading, setLoading] = useState4(false);
@@ -1830,7 +1836,7 @@ var useMutation = (route, option) => {
       }
     };
   }, []);
-  const mutate = useCallback4(
+  const mutate = useCallback5(
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
@@ -1893,7 +1899,7 @@ var useMutation = (route, option) => {
     },
     [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config2]
   );
-  const cancel = useCallback4(() => {
+  const cancel = useCallback5(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -1913,7 +1919,7 @@ var useMutation = (route, option) => {
 var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
-import { useCallback as useCallback5, useRef as useRef4, useEffect as useEffect6 } from "react";
+import { useCallback as useCallback6, useRef as useRef4, useEffect as useEffect6 } from "react";
 import { Keyboard as Keyboard2 } from "react-native";
 var useMutationAsync = (route, option) => {
   const app = useApp();
@@ -1930,7 +1936,7 @@ var useMutationAsync = (route, option) => {
       }
     };
   }, []);
-  const mutate = useCallback5(
+  const mutate = useCallback6(
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
@@ -1979,7 +1985,7 @@ var useMutationAsync = (route, option) => {
     },
     [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config2]
   );
-  const cancel = useCallback5(() => {
+  const cancel = useCallback6(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -2117,7 +2123,7 @@ function addJitter(delay, jitterFactor) {
 }
 
 // src/hooks/utils/offline-queue.ts
-import uuid from "react-native-uuid";
+import uuid2 from "react-native-uuid";
 var storage2;
 try {
   storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
@@ -2142,7 +2148,7 @@ var OfflineQueue = class {
   async enqueue(mutation) {
     const item = {
       ...mutation,
-      id: uuid.v4(),
+      id: uuid2.v4(),
       timestamp: Date.now(),
       retries: 0,
       maxRetries: DEFAULT_MAX_RETRIES
