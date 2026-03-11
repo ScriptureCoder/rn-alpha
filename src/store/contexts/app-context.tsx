@@ -1,5 +1,5 @@
 import React, {
-    createContext,
+    createContext, useCallback,
     useContext,
     useEffect,
     useMemo, useRef,
@@ -10,6 +10,7 @@ import useSelector from '../../hooks/use-selector';
 import useDispatch from '../../hooks/use-dispatch';
 import { actions, CoreAppState } from '../reducers/app-reducer';
 import {Animated} from "react-native";
+import uuid from "react-native-uuid";
 
 /**
  * Core app context type
@@ -76,6 +77,12 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const dispatch = useDispatch();
     const [connected, setConnected] = useState(false);
     const scrollY = useRef(new Animated.Value(0)).current
+
+    useEffect(()=>{
+        if (!state.deviceId){
+            value.setDeviceId( uuid.v4() );
+        }
+    },[state.deviceId]);
 
     // Network connectivity monitoring
     useEffect(() => {
