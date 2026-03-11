@@ -1,4 +1,5 @@
 import { encrypt, decrypt, isValidEncryptionConfig, getEncryptionConfig } from "../../utils/crypto";
+import { logger } from "../../utils/logger";
 
 /**
  * Encryption options for requests and responses
@@ -147,7 +148,7 @@ export function applyResponseDecryption(
             }
           } catch (error: any) {
             // If decryption fails for a specific key, log warning but continue
-            console.warn(`Failed to decrypt key '${key}':`, error.message);
+            logger.warn(`Failed to decrypt key '${key}':`, error.message);
           }
         }
       }

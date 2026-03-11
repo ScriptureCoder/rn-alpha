@@ -4,6 +4,7 @@ import { setMaxCacheSize } from 'store/reducers';
 import { enableGlobalDebug, disableGlobalDebug } from 'hooks/utils/debug-logger';
 import { setHttpConfig } from 'utils/service';
 import { setEncryptionConfig } from 'utils/crypto';
+import { logger, setLoggerDebugMode } from 'utils/logger';
 
 interface ConfigContextType {
     config: AlphaConfig;
@@ -99,6 +100,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ config: initialC
 
     // Apply debug mode
     useEffect(() => {
+        setLoggerDebugMode(!!internalConfig.debug);
         if (internalConfig.debug) {
             enableGlobalDebug();
         } else {
@@ -151,7 +153,7 @@ export function useAlphaConfig(): [AlphaConfig, (config: Partial<AlphaConfig>) =
     if (!context) {
         // Return defaults with no-op setter if used outside provider
         const noopSetter = () => {
-            console.warn('[rn-alpha-hooks] useAlphaConfig: Cannot update config outside AlphaProvider');
+            logger.warn('[rn-alpha-hooks] useAlphaConfig: Cannot update config outside AlphaProvider');
         };
         return [DEFAULT_CONFIG, noopSetter];
     }

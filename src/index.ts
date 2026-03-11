@@ -195,6 +195,9 @@ export { default as capitalize } from './utils/capitalize';
 export { default as Toast } from './utils/toast';
 export { default as readFile } from './utils/readFile';
 
+// NEW: Logger utility
+export { logger } from './utils/logger';
+
 // HTTP service (advanced use - direct access to http function)
 export { default as http } from './utils/service';
 export type { Method } from './utils/service';

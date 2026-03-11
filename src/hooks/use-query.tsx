@@ -29,6 +29,7 @@ import {
   applyRequestEncryption,
   applyResponseDecryption,
 } from "./utils/encryption-helpers";
+import { logger } from "../utils/logger";
 
 /**
  * Custom hook for data fetching with caching support
@@ -220,7 +221,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
             app.clearAuth();
             // Call onAuthError callback if provided
             if (config.onAuthError) {
-              Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+              Promise.resolve(config.onAuthError(res.status)).catch(logger.error);
             }
           } else if (error && onError) {
             onError(error, res.status);
@@ -291,7 +292,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           responseData = extractResponseData(responseData, resolvedDataPath);
 
           if (concat === "start") {
-            console.log(">>>>>>>>>Start");
+            logger.log(">>>>>>>>>Start");
             dispatch(actions.prepend({ key, value: responseData }));
           } else if (concat === "end") {
             dispatch(actions.append({ key, value: responseData }));
@@ -310,7 +311,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
           app.clearAuth();
           // Call onAuthError callback if provided
           if (config.onAuthError) {
-            Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config.onAuthError(res.status)).catch(logger.error);
           }
           return { error };
         }

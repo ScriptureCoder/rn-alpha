@@ -5,6 +5,7 @@
 
 import uuid from 'react-native-uuid';
 import { Route } from '../../types';
+import { logger } from '../../utils/logger';
 
 // Import MMKV storage (has set, getString methods)
 let storage: any;
@@ -13,7 +14,7 @@ try {
 } catch (e) {
   // Fallback if storage not available
   storage = {
-    set: () => {},
+    set: () => { },
     getString: () => undefined,
   };
 }
@@ -88,7 +89,7 @@ export class OfflineQueue {
 
         if (item.retries >= item.maxRetries) {
           // Give up on this item
-          console.warn(`[OfflineQueue] Giving up on mutation ${item.id} after ${item.retries} retries`);
+          logger.warn(`[OfflineQueue] Giving up on mutation ${item.id} after ${item.retries} retries`);
           this.queue.shift();
           await this.persist();
         } else {
@@ -143,7 +144,7 @@ export class OfflineQueue {
     try {
       storage.set(STORAGE_KEY, JSON.stringify(this.queue));
     } catch (error) {
-      console.error('[OfflineQueue] Failed to persist queue:', error);
+      logger.error('[OfflineQueue] Failed to persist queue:', error);
     }
   }
 
@@ -157,7 +158,7 @@ export class OfflineQueue {
         this.queue = JSON.parse(stored);
       }
     } catch (error) {
-      console.error('[OfflineQueue] Failed to load queue:', error);
+      logger.error('[OfflineQueue] Failed to load queue:', error);
       this.queue = [];
     }
   }

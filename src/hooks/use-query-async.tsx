@@ -29,6 +29,7 @@ import {
   isCacheStale,
   getCacheData,
 } from "./utils/cache-helpers";
+import { logger } from "../utils/logger";
 
 /**
  * Options for async query
@@ -168,7 +169,7 @@ const useQueryAsync = (): UseQueryAsyncReturn => {
           app.clearAuth();
           // Call onAuthError callback if provided
           if (config.onAuthError) {
-            Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config.onAuthError(res.status)).catch(logger.error);
           }
 
           const errorMessage = error || "Unauthorized";

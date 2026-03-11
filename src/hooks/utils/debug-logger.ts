@@ -3,6 +3,8 @@
  * Provides detailed logging for debugging cache hits, network requests, and timing
  */
 
+import { logger } from '../../utils/logger';
+
 export interface QueryDebugInfo {
   key: string;
   action: 'cache-hit' | 'cache-miss' | 'fetch-start' | 'fetch-success' | 'fetch-error' | 'invalidate';
@@ -32,14 +34,14 @@ export class QueryDebugger {
   logCacheHit(key: string, data: any) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} 🎯 Cache HIT`, {
+    logger.log(`${this.prefix} 🎯 Cache HIT`, {
       key,
       dataSize: this.getDataSize(data),
       timestamp: new Date().toISOString(),
     });
 
     if (data) {
-      console.log(`${this.prefix} Data:`, data);
+      logger.log(`${this.prefix} Data:`, data);
     }
   }
 
@@ -49,7 +51,7 @@ export class QueryDebugger {
   logCacheMiss(key: string) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} ❌ Cache MISS`, {
+    logger.log(`${this.prefix} ❌ Cache MISS`, {
       key,
       timestamp: new Date().toISOString(),
     });
@@ -61,7 +63,7 @@ export class QueryDebugger {
   logFetchStart(key: string, variables?: any) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} 🚀 Fetching`, {
+    logger.log(`${this.prefix} 🚀 Fetching`, {
       key,
       variables,
       timestamp: new Date().toISOString(),
@@ -74,7 +76,7 @@ export class QueryDebugger {
   logFetchSuccess(key: string, duration?: number, data?: any) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} ✅ Success`, {
+    logger.log(`${this.prefix} ✅ Success`, {
       key,
       duration: duration ? `${duration.toFixed(2)}ms` : 'N/A',
       dataSize: this.getDataSize(data),
@@ -88,7 +90,7 @@ export class QueryDebugger {
   logFetchError(key: string, error: any, duration?: number) {
     if (!this.enabled) return;
 
-    console.error(`${this.prefix} ❌ Error`, {
+    logger.error(`${this.prefix} ❌ Error`, {
       key,
       error: error?.message || error,
       duration: duration ? `${duration.toFixed(2)}ms` : 'N/A',
@@ -102,7 +104,7 @@ export class QueryDebugger {
   logInvalidate(key: string | RegExp) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} 🔄 Invalidating`, {
+    logger.log(`${this.prefix} 🔄 Invalidating`, {
       pattern: key.toString(),
       timestamp: new Date().toISOString(),
     });
@@ -114,7 +116,7 @@ export class QueryDebugger {
   logPolicy(key: string, policy: string, decision: string) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} 📋 Policy`, {
+    logger.log(`${this.prefix} 📋 Policy`, {
       key,
       policy,
       decision,
@@ -128,7 +130,7 @@ export class QueryDebugger {
   logCacheExpiry(key: string, isExpired: boolean, isStale: boolean) {
     if (!this.enabled) return;
 
-    console.log(`${this.prefix} ⏰ Cache Status`, {
+    logger.log(`${this.prefix} ⏰ Cache Status`, {
       key,
       expired: isExpired,
       stale: isStale,
@@ -143,7 +145,7 @@ export class QueryDebugger {
     if (!this.enabled) return;
 
     if (isDuplicate) {
-      console.log(`${this.prefix} 🔗 Request Deduplicated`, {
+      logger.log(`${this.prefix} 🔗 Request Deduplicated`, {
         key,
         message: 'Using existing in-flight request',
         timestamp: new Date().toISOString(),

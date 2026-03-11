@@ -4,7 +4,7 @@ import { useApp } from "store/contexts/app-context";
 import { Keyboard } from "react-native";
 import { Route } from "types";
 import useCache from "./use-cache";
-import {MutationOptions, MutationResult, MutationResponse, MutationAsyncResult} from "./types";
+import { MutationOptions, MutationResult, MutationResponse, MutationAsyncResult } from "./types";
 import {
     extractErrorMessage,
     isSuccessStatus,
@@ -21,6 +21,7 @@ import {
     applyRequestEncryption,
     applyResponseDecryption,
 } from "./utils/encryption-helpers";
+import { logger } from "../utils/logger";
 
 /**
  * Custom hook for data mutations (POST, PUT, DELETE operations)
@@ -61,74 +62,74 @@ const useMutationAsync = <T = any,>(
      * @param variables - Request variables
      * @returns Promise with response data or error
      */
-    const mutate = useCallback( async (variables: Record<string, any> ): Promise<MutationResponse<T>> => {
-            try {
-                // Dismiss keyboard by default
-                if (option?.keyboard === undefined || option?.keyboard) {
-                    Keyboard.dismiss();
-                }
-
-                const { path, method, rawPath } = getContext(route, variables);
-
-                // Abort any existing request
-                if (abortControllerRef.current) {
-                    abortControllerRef.current.abort();
-                }
-
-                // Create new abort controller
-                abortControllerRef.current = new AbortController();
-
-                // Apply request encryption if enabled
-                const requestData = encryptionOptions
-                    ? applyRequestEncryption(variables, encryptionOptions)
-                    : variables;
-
-                const res: any = await http(
-                    path,
-                    (method as Method) || "POST",
-                    requestData,
-                    {
-                        returnStatus: true,
-                        auth: auth?.accessToken,
-                        returnText: option?.text,
-                        signal: abortControllerRef.current.signal,
-                    }
-                );
-
-                if (isSuccessStatus(res.status)) {
-                    let responseData = res.data
-                    // Apply response decryption if enabled
-                    if (encryptionOptions && responseData) {
-                        responseData = applyResponseDecryption(responseData, encryptionOptions);
-                    }
-                    responseData = extractResponseData(responseData, resolvedDataPath);
-
-                    return createSuccessResponse(responseData, res.status);
-                }
-
-                let errorMessage = extractErrorMessage(res);
-
-                // Check for auth errors
-                if (isAuthError(res.status)) {
-                    // Auth error - clear authentication
-                    app.clearAuth();
-                    // Call onAuthError callback if provided (for all auth errors)
-                    if (config.onAuthError) {
-                        Promise.resolve(config.onAuthError(res.status)).catch(console.error);
-                    }
-                }
-
-                return createErrorResponse(errorMessage, res.status);
-            } catch (e: any) {
-                // Handle abort errors - don't set error state for cancellations
-                if (isAbortError(e)) {
-                    return createErrorResponse("", 0);
-                    // return createErrorResponse("Request cancelled", 0);
-                }
-                const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
-                return createErrorResponse(errorMessage, 500);
+    const mutate = useCallback(async (variables: Record<string, any>): Promise<MutationResponse<T>> => {
+        try {
+            // Dismiss keyboard by default
+            if (option?.keyboard === undefined || option?.keyboard) {
+                Keyboard.dismiss();
             }
-        },
+
+            const { path, method, rawPath } = getContext(route, variables);
+
+            // Abort any existing request
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+
+            // Create new abort controller
+            abortControllerRef.current = new AbortController();
+
+            // Apply request encryption if enabled
+            const requestData = encryptionOptions
+                ? applyRequestEncryption(variables, encryptionOptions)
+                : variables;
+
+            const res: any = await http(
+                path,
+                (method as Method) || "POST",
+                requestData,
+                {
+                    returnStatus: true,
+                    auth: auth?.accessToken,
+                    returnText: option?.text,
+                    signal: abortControllerRef.current.signal,
+                }
+            );
+
+            if (isSuccessStatus(res.status)) {
+                let responseData = res.data
+                // Apply response decryption if enabled
+                if (encryptionOptions && responseData) {
+                    responseData = applyResponseDecryption(responseData, encryptionOptions);
+                }
+                responseData = extractResponseData(responseData, resolvedDataPath);
+
+                return createSuccessResponse(responseData, res.status);
+            }
+
+            let errorMessage = extractErrorMessage(res);
+
+            // Check for auth errors
+            if (isAuthError(res.status)) {
+                // Auth error - clear authentication
+                app.clearAuth();
+                // Call onAuthError callback if provided (for all auth errors)
+                if (config.onAuthError) {
+                    Promise.resolve(config.onAuthError(res.status)).catch(logger.error);
+                }
+            }
+
+            return createErrorResponse(errorMessage, res.status);
+        } catch (e: any) {
+            // Handle abort errors - don't set error state for cancellations
+            if (isAbortError(e)) {
+                return createErrorResponse("", 0);
+                // return createErrorResponse("Request cancelled", 0);
+            }
+            const errorMessage = e.message || ERROR_MESSAGES.GENERIC;
+            return createErrorResponse(errorMessage, 500);
+        }
+    },
         [route, option, auth, app, getContext, encryptionOptions, resolvedDataPath, config]
     );
 

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import config from 'config';
 import { AlphaConfig, DEFAULT_CONFIG } from '../config';
+import { logger } from './logger';
 
 export type Method = 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH';
 export type ContentType = 'json' | 'urlencoded' | 'multipart';
@@ -236,7 +237,7 @@ async function http<T = any>(
     if (auth) {
       headers['Authorization'] = auth;
     }
-    console.log(JSON.stringify({ headers, method, path, data }, null, 2));
+    logger.log(JSON.stringify({ headers, method, path, data }, null, 2));
     // Prepare request config
     const config: AxiosRequestConfig = {
       method,
@@ -257,7 +258,7 @@ async function http<T = any>(
     // Make the request
     const response: AxiosResponse = await axiosInstance.request(config);
 
-    console.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
+    logger.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
     // Format response based on options
     if (returnStatus) {
       return {

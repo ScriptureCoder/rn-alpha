@@ -1,4 +1,5 @@
 import CryptoJS from "react-native-crypto-js";
+import { logger } from "./logger";
 
 /**
  * Encryption configuration interface
@@ -66,20 +67,20 @@ export function getEncryptionConfig(): EncryptionConfig {
  */
 export function isValidEncryptionConfig(config: Partial<EncryptionConfig>): boolean {
   if (!config.key || !config.iv) {
-    console.error('[rn-alpha-hooks] Encryption config must have both key and iv');
+    logger.error('[rn-alpha-hooks] Encryption config must have both key and iv');
     return false;
   }
-  
+
   if (config.key.length !== 16) {
-    console.error('[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128');
+    logger.error('[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128');
     return false;
   }
-  
+
   if (config.iv.length !== 16) {
-    console.error('[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters');
+    logger.error('[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters');
     return false;
   }
-  
+
   return true;
 }
 
@@ -99,7 +100,7 @@ export function isValidEncryptionConfig(config: Partial<EncryptionConfig>): bool
  */
 export function generateEncryptionConfig(): EncryptionConfig {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+';
-  
+
   const generateRandomString = (length: number): string => {
     let result = '';
     for (let i = 0; i < length; i++) {
@@ -107,7 +108,7 @@ export function generateEncryptionConfig(): EncryptionConfig {
     }
     return result;
   };
-  
+
   return {
     key: generateRandomString(16),
     iv: generateRandomString(16),
@@ -138,24 +139,24 @@ export function encrypt(
 ): string {
   const keyStr = customKey || currentConfig.key;
   const ivStr = customIv || currentConfig.iv;
-  
+
   // Warn in development if using default keys
   if (
-    typeof __DEV__ !== 'undefined' && 
-    __DEV__ && 
-    keyStr === DEFAULT_CONFIG.key && 
+    typeof __DEV__ !== 'undefined' &&
+    __DEV__ &&
+    keyStr === DEFAULT_CONFIG.key &&
     !hasWarnedAboutDefaultKeys
   ) {
-    console.warn(
+    logger.warn(
       '[rn-alpha-hooks] ⚠️ Using default encryption keys! ' +
       'Set custom keys via AlphaProvider config.encryption or setEncryptionConfig() for production.'
     );
     hasWarnedAboutDefaultKeys = true;
   }
-  
+
   const key = CryptoJS.enc.Utf8.parse(keyStr);
   const iv = CryptoJS.enc.Utf8.parse(ivStr);
-  
+
   return CryptoJS.AES.encrypt(payload, key, {
     iv: iv,
     mode: CryptoJS.mode.CBC,
@@ -187,15 +188,15 @@ export function decrypt(
 ): string {
   const keyStr = customKey || currentConfig.key;
   const ivStr = customIv || currentConfig.iv;
-  
+
   const key = CryptoJS.enc.Utf8.parse(keyStr);
   const iv = CryptoJS.enc.Utf8.parse(ivStr);
-  
+
   const decrypted_response = CryptoJS.AES.decrypt(
     { ciphertext: CryptoJS.enc.Base64.parse(response) },
     key,
     { iv: iv }
   );
-  
+
   return decrypted_response.toString(CryptoJS.enc.Utf8);
 }

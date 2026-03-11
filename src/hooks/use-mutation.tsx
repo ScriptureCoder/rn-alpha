@@ -21,6 +21,7 @@ import {
     applyRequestEncryption,
     applyResponseDecryption,
 } from "./utils/encryption-helpers";
+import { logger } from "../utils/logger";
 
 /**
  * Custom hook for data mutations (POST, PUT, DELETE operations)
@@ -126,7 +127,7 @@ const useMutation = <T = any,>(
                     app.clearAuth();
                     // Call onAuthError callback if provided (for all auth errors)
                     if (config.onAuthError) {
-                        Promise.resolve(config.onAuthError(res.status)).catch(console.error);
+                        Promise.resolve(config.onAuthError(res.status)).catch(logger.error);
                     }
                 }
 

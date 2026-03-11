@@ -1825,6 +1825,23 @@ interface EncryptionOptions {
 
 ## Utilities Reference
 
+### Logger Utility
+
+The `logger` utility is a central logging wrapper that correctly disables console output in production.
+
+By default, it checks the `__DEV__` flag (in React Native) or `NODE_ENV !== 'production'` (in Node/Web). You can also explicitly enable or disable the library's internal logging by setting `debug: true` or `false` in your `AlphaProvider`'s `config` prop.
+
+```typescript
+import { logger } from '@scripturecoder/rn-alpha-hooks';
+
+// These won't print anything in production!
+logger.log('Normal logs');
+logger.warn('Warning logs');
+logger.error('Error logs');
+logger.info('Info logs');
+logger.debug('Debug logs');
+```
+
 ### HTTP Utilities
 
 #### createAbortController

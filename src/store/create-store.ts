@@ -1,5 +1,6 @@
 import { configureStore, combineReducers, Reducer } from '@reduxjs/toolkit';
 import AlphaStorage from '../utils/storage';
+import { logger } from '../utils/logger';
 import cacheReducer from './reducers/cache-reducer';
 import threadReducer from './reducers/thread-reducer';
 import appReducer from './reducers/app-reducer';
@@ -28,7 +29,7 @@ const saveToLocalStorage = (state: any, key: string) => {
   try {
     AlphaStorage.setItem(key, state);
   } catch (e) {
-    console.error('[AlphaStore] Failed to save state:', e);
+    logger.error('[AlphaStore] Failed to save state:', e);
   }
 };
 
@@ -41,7 +42,7 @@ const loadFromLocalStorage = (key: string) => {
     if (serializedState === null) return undefined;
     return serializedState;
   } catch (e) {
-    console.warn('[AlphaStore] Failed to load state:', e);
+    logger.warn('[AlphaStore] Failed to load state:', e);
     return undefined;
   }
 };
@@ -89,7 +90,7 @@ export function createAlphaStore<T extends CustomReducers = {}>(
   });
 
   // Load persisted state if enabled
-  const preloadedState = persist 
+  const preloadedState = persist
     ? loadFromLocalStorage(storageKey) as Partial<ReturnType<typeof rootReducer>>
     : undefined;
 
