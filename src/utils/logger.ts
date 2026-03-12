@@ -7,19 +7,19 @@ export const setLoggerDebugMode = (enabled: boolean) => {
 };
 
 export const logger = {
-    log: (...args: any[]) => {
+    log: (...args: any[]): any => {
         if (isDebugEnabled) console.log(...args);
     },
-    warn: (...args: any[]) => {
+    warn: (...args: any[]): any => {
         if (isDebugEnabled) console.warn(...args);
     },
-    error: (...args: any[]) => {
+    error: (...args: any[]): any => {
         if (isDebugEnabled) console.error(...args);
     },
-    info: (...args: any[]) => {
+    info: (...args: any[]): any => {
         if (isDebugEnabled) console.info(...args);
     },
-    debug: (...args: any[]) => {
+    debug: (...args: any[]): any => {
         if (isDebugEnabled) console.debug(...args);
     }
 };

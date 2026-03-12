@@ -102,6 +102,29 @@ var config = {
 };
 var config_default = config;
 
+// src/utils/logger.ts
+var isDebugEnabled = typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
+var setLoggerDebugMode = (enabled) => {
+  isDebugEnabled = enabled;
+};
+var logger = {
+  log: (...args) => {
+    if (isDebugEnabled) console.log(...args);
+  },
+  warn: (...args) => {
+    if (isDebugEnabled) console.warn(...args);
+  },
+  error: (...args) => {
+    if (isDebugEnabled) console.error(...args);
+  },
+  info: (...args) => {
+    if (isDebugEnabled) console.info(...args);
+  },
+  debug: (...args) => {
+    if (isDebugEnabled) console.debug(...args);
+  }
+};
+
 // src/utils/service.ts
 var currentConfig = DEFAULT_CONFIG;
 function setHttpConfig(newConfig) {
@@ -202,7 +225,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
     if (auth) {
       headers["Authorization"] = auth;
     }
-    console.log(JSON.stringify({ headers, method, path, data }, null, 2));
+    logger.log(JSON.stringify({ headers, method, path, data }, null, 2));
     const config2 = {
       method,
       url: path,
@@ -216,7 +239,7 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       config2.data = formatRequestData(data, contentType, method);
     }
     const response = await axiosInstance.request(config2);
-    console.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
+    logger.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
     if (returnStatus) {
       return {
         data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data,
@@ -593,7 +616,7 @@ var saveToLocalStorage = (state, key) => {
   try {
     storage_default.setItem(key, state);
   } catch (e) {
-    console.error("[AlphaStore] Failed to save state:", e);
+    logger.error("[AlphaStore] Failed to save state:", e);
   }
 };
 var loadFromLocalStorage = (key) => {
@@ -602,7 +625,7 @@ var loadFromLocalStorage = (key) => {
     if (serializedState === null) return void 0;
     return serializedState;
   } catch (e) {
-    console.warn("[AlphaStore] Failed to load state:", e);
+    logger.warn("[AlphaStore] Failed to load state:", e);
     return void 0;
   }
 };
@@ -969,13 +992,13 @@ var QueryDebugger = class {
    */
   logCacheHit(key, data) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u{1F3AF} Cache HIT`, {
+    logger.log(`${this.prefix} \u{1F3AF} Cache HIT`, {
       key,
       dataSize: this.getDataSize(data),
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
     if (data) {
-      console.log(`${this.prefix} Data:`, data);
+      logger.log(`${this.prefix} Data:`, data);
     }
   }
   /**
@@ -983,7 +1006,7 @@ var QueryDebugger = class {
    */
   logCacheMiss(key) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u274C Cache MISS`, {
+    logger.log(`${this.prefix} \u274C Cache MISS`, {
       key,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -993,7 +1016,7 @@ var QueryDebugger = class {
    */
   logFetchStart(key, variables) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u{1F680} Fetching`, {
+    logger.log(`${this.prefix} \u{1F680} Fetching`, {
       key,
       variables,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1004,7 +1027,7 @@ var QueryDebugger = class {
    */
   logFetchSuccess(key, duration, data) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u2705 Success`, {
+    logger.log(`${this.prefix} \u2705 Success`, {
       key,
       duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
       dataSize: this.getDataSize(data),
@@ -1016,7 +1039,7 @@ var QueryDebugger = class {
    */
   logFetchError(key, error, duration) {
     if (!this.enabled) return;
-    console.error(`${this.prefix} \u274C Error`, {
+    logger.error(`${this.prefix} \u274C Error`, {
       key,
       error: (error == null ? void 0 : error.message) || error,
       duration: duration ? `${duration.toFixed(2)}ms` : "N/A",
@@ -1028,7 +1051,7 @@ var QueryDebugger = class {
    */
   logInvalidate(key) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u{1F504} Invalidating`, {
+    logger.log(`${this.prefix} \u{1F504} Invalidating`, {
       pattern: key.toString(),
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -1038,7 +1061,7 @@ var QueryDebugger = class {
    */
   logPolicy(key, policy, decision) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u{1F4CB} Policy`, {
+    logger.log(`${this.prefix} \u{1F4CB} Policy`, {
       key,
       policy,
       decision,
@@ -1050,7 +1073,7 @@ var QueryDebugger = class {
    */
   logCacheExpiry(key, isExpired, isStale) {
     if (!this.enabled) return;
-    console.log(`${this.prefix} \u23F0 Cache Status`, {
+    logger.log(`${this.prefix} \u23F0 Cache Status`, {
       key,
       expired: isExpired,
       stale: isStale,
@@ -1063,7 +1086,7 @@ var QueryDebugger = class {
   logDeduplication(key, isDuplicate) {
     if (!this.enabled) return;
     if (isDuplicate) {
-      console.log(`${this.prefix} \u{1F517} Request Deduplicated`, {
+      logger.log(`${this.prefix} \u{1F517} Request Deduplicated`, {
         key,
         message: "Using existing in-flight request",
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
@@ -1115,15 +1138,15 @@ function getEncryptionConfig() {
 }
 function isValidEncryptionConfig(config2) {
   if (!config2.key || !config2.iv) {
-    console.error("[rn-alpha-hooks] Encryption config must have both key and iv");
+    logger.error("[rn-alpha-hooks] Encryption config must have both key and iv");
     return false;
   }
   if (config2.key.length !== 16) {
-    console.error("[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128");
+    logger.error("[rn-alpha-hooks] Encryption key must be exactly 16 characters for AES-128");
     return false;
   }
   if (config2.iv.length !== 16) {
-    console.error("[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters");
+    logger.error("[rn-alpha-hooks] IV (Initialization Vector) must be exactly 16 characters");
     return false;
   }
   return true;
@@ -1146,7 +1169,7 @@ function encrypt(payload, customKey, customIv) {
   const keyStr = customKey || currentConfig2.key;
   const ivStr = customIv || currentConfig2.iv;
   if (typeof __DEV__ !== "undefined" && __DEV__ && keyStr === DEFAULT_CONFIG2.key && !hasWarnedAboutDefaultKeys) {
-    console.warn(
+    logger.warn(
       "[rn-alpha-hooks] \u26A0\uFE0F Using default encryption keys! Set custom keys via AlphaProvider config.encryption or setEncryptionConfig() for production."
     );
     hasWarnedAboutDefaultKeys = true;
@@ -1237,6 +1260,7 @@ var ConfigProvider = ({ config: initialConfig, children }) => {
     }
   }, [(_a = internalConfig.cache) == null ? void 0 : _a.maxSize]);
   useEffect3(() => {
+    setLoggerDebugMode(!!internalConfig.debug);
     if (internalConfig.debug) {
       enableGlobalDebug();
     } else {
@@ -1261,7 +1285,7 @@ function useAlphaConfig() {
   const context = useContext3(ConfigContext);
   if (!context) {
     const noopSetter = () => {
-      console.warn("[rn-alpha-hooks] useAlphaConfig: Cannot update config outside AlphaProvider");
+      logger.warn("[rn-alpha-hooks] useAlphaConfig: Cannot update config outside AlphaProvider");
     };
     return [DEFAULT_CONFIG, noopSetter];
   }
@@ -1357,7 +1381,7 @@ function applyResponseDecryption(data, options) {
               result[key] = decrypted;
             }
           } catch (error) {
-            console.warn(`Failed to decrypt key '${key}':`, error.message);
+            logger.warn(`Failed to decrypt key '${key}':`, error.message);
           }
         }
       }
@@ -1506,7 +1530,7 @@ var useQuery = (route, args) => {
           } else if (isAuthError(res.status)) {
             app.clearAuth();
             if (config2.onAuthError) {
-              Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+              Promise.resolve(config2.onAuthError(res.status)).catch(logger.error);
             }
           } else if (error && onError) {
             onError(error, res.status);
@@ -1554,7 +1578,7 @@ var useQuery = (route, args) => {
           }
           responseData = extractResponseData(responseData, resolvedDataPath);
           if (concat === "start") {
-            console.log(">>>>>>>>>Start");
+            logger.log(">>>>>>>>>Start");
             dispatch(actions2.prepend({ key, value: responseData }));
           } else if (concat === "end") {
             dispatch(actions2.append({ key, value: responseData }));
@@ -1571,7 +1595,7 @@ var useQuery = (route, args) => {
         } else if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
-            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config2.onAuthError(res.status)).catch(logger.error);
           }
           return { error };
         }
@@ -1714,7 +1738,7 @@ var useQueryAsync = () => {
         } else if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
-            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config2.onAuthError(res.status)).catch(logger.error);
           }
           const errorMessage2 = error || "Unauthorized";
           if (opts.onError) {
@@ -1877,7 +1901,7 @@ var useMutation = (route, option) => {
         if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
-            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config2.onAuthError(res.status)).catch(logger.error);
           }
         }
         setError(errorMessage);
@@ -1971,7 +1995,7 @@ var useMutationAsync = (route, option) => {
         if (isAuthError(res.status)) {
           app.clearAuth();
           if (config2.onAuthError) {
-            Promise.resolve(config2.onAuthError(res.status)).catch(console.error);
+            Promise.resolve(config2.onAuthError(res.status)).catch(logger.error);
           }
         }
         return createErrorResponse(errorMessage, res.status);
@@ -2174,7 +2198,7 @@ var OfflineQueue = class {
       } catch (error) {
         item.retries++;
         if (item.retries >= item.maxRetries) {
-          console.warn(`[OfflineQueue] Giving up on mutation ${item.id} after ${item.retries} retries`);
+          logger.warn(`[OfflineQueue] Giving up on mutation ${item.id} after ${item.retries} retries`);
           this.queue.shift();
           await this.persist();
         } else {
@@ -2222,7 +2246,7 @@ var OfflineQueue = class {
     try {
       storage2.set(STORAGE_KEY, JSON.stringify(this.queue));
     } catch (error) {
-      console.error("[OfflineQueue] Failed to persist queue:", error);
+      logger.error("[OfflineQueue] Failed to persist queue:", error);
     }
   }
   /**
@@ -2235,7 +2259,7 @@ var OfflineQueue = class {
         this.queue = JSON.parse(stored);
       }
     } catch (error) {
-      console.error("[OfflineQueue] Failed to load queue:", error);
+      logger.error("[OfflineQueue] Failed to load queue:", error);
       this.queue = [];
     }
   }
@@ -2403,7 +2427,7 @@ var readFile = async (path) => {
   try {
     return await RNFetchBlob.fs.readFile(path.replace("file://", ""), "base64");
   } catch (error) {
-    console.error("Error reading file:", error);
+    logger.error("Error reading file:", error);
     return null;
   }
 };
@@ -2481,6 +2505,7 @@ export {
   isRequestInFlight,
   isSuccessStatus,
   isValidEncryptionConfig,
+  logger,
   naira,
   readFile_default as readFile,
   retryWithBackoff,
