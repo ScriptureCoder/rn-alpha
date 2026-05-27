@@ -711,64 +711,13 @@ function shouldRetry(error) {
   return true;
 }
 
-// src/store/create-store.ts
-var import_toolkit4 = require("@reduxjs/toolkit");
-init_storage();
-var saveToLocalStorage = (state, key) => {
-  try {
-    storage_default.setItem(key, state);
-  } catch (e) {
-    logger.error("[AlphaStore] Failed to save state:", e);
-  }
-};
-var loadFromLocalStorage = (key) => {
-  try {
-    const serializedState = storage_default.getItem(key);
-    if (serializedState === null) return void 0;
-    return serializedState;
-  } catch (e) {
-    logger.warn("[AlphaStore] Failed to load state:", e);
-    return void 0;
-  }
-};
-function createAlphaStore(customReducers, options = {}) {
-  const {
-    persist = true,
-    storageKey = "_alpha_state"
-  } = options;
-  const rootReducer = (0, import_toolkit4.combineReducers)({
-    // Core reducers (always included)
-    cache: cache_reducer_default,
-    thread: thread_reducer_default,
-    app: app_reducer_default,
-    // Custom app reducers
-    ...customReducers
-  });
-  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
-  const store = (0, import_toolkit4.configureStore)({
-    reducer: rootReducer,
-    // Type assertion needed for dynamic reducer combination
-    preloadedState,
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-      immutableCheck: false,
-      serializableCheck: false
-      // Allow non-serializable values
-    })
-  });
-  if (persist) {
-    store.subscribe(() => {
-      saveToLocalStorage(store.getState(), storageKey);
-    });
-  }
-  return store;
-}
-var defaultStore = createAlphaStore();
-
 // src/hooks/use-cache.tsx
+var import_react_redux3 = require("react-redux");
 var getItemId = (item, idRef) => {
   return item[idRef] || (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
 };
 var useCache = () => {
+  const store = (0, import_react_redux3.useStore)();
   const dispatch = use_dispatch_default();
   const { auth: { userId } } = useApp();
   const getContext = (0, import_react2.useCallback)(
@@ -787,7 +736,7 @@ var useCache = () => {
   const getData = (0, import_react2.useCallback)(
     (key) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       return (_a = cacheState[key]) == null ? void 0 : _a.data;
     },
     []
@@ -807,7 +756,7 @@ var useCache = () => {
   const updateItem = (0, import_react2.useCallback)(
     (key, id, value, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const index = cache.findIndex((item) => getItemId(item, idRef) === id);
@@ -823,7 +772,7 @@ var useCache = () => {
   const getItem = (0, import_react2.useCallback)(
     (key, id, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         return cache.find((item) => getItemId(item, idRef) === id);
@@ -835,7 +784,7 @@ var useCache = () => {
   const updateValue = (0, import_react2.useCallback)(
     (key, arg, value) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, [arg]: value });
@@ -846,7 +795,7 @@ var useCache = () => {
   const updateValues = (0, import_react2.useCallback)(
     (key, values) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, ...values });
@@ -857,7 +806,7 @@ var useCache = () => {
   const prepend = (0, import_react2.useCallback)(
     (key, data) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.prepend({ key, value: data }));
@@ -870,7 +819,7 @@ var useCache = () => {
   const updateOrPrepend = (0, import_react2.useCallback)(
     (key, data, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const dataId = getItemId(data, idRef);
@@ -891,7 +840,7 @@ var useCache = () => {
   const append = (0, import_react2.useCallback)(
     (key, data) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.append({ key, value: data }));
@@ -904,7 +853,7 @@ var useCache = () => {
   const deleteItem = (0, import_react2.useCallback)(
     (key, id, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         setCache(key, cache.filter((item) => getItemId(item, idRef) !== id));
@@ -921,7 +870,7 @@ var useCache = () => {
   const invalidateQueries = (0, import_react2.useCallback)(
     (pattern) => {
       const regex = typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const keysToInvalidate = Object.keys(cacheState).filter(
         (k) => regex.test(k)
       );
@@ -1774,7 +1723,9 @@ var useQuery = (route, args) => {
 var use_query_default = useQuery;
 
 // src/hooks/use-query-async.tsx
+var import_react_redux4 = require("react-redux");
 var useQueryAsync = () => {
+  const store = (0, import_react_redux4.useStore)();
   const app = useApp();
   const { auth } = app;
   const { getContext } = use_cache_default();
@@ -1786,7 +1737,7 @@ var useQueryAsync = () => {
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
     const resolvedDataPath = opts.dataPath !== void 0 ? opts.dataPath : config2.dataPath;
     const policy = opts.networkPolicy || "cache-first";
-    const cacheState = defaultStore.getState().cache;
+    const cacheState = store.getState().cache;
     const cachedEntry = cacheState[key];
     const cachedData = getCacheData(cachedEntry);
     const performNetworkRequest = async () => {
@@ -2411,7 +2362,62 @@ function useRefetchInterval(enabled, refetch, interval) {
 
 // src/store/contexts/alpha-provider.tsx
 var import_react9 = require("react");
-var import_react_redux3 = require("react-redux");
+var import_react_redux5 = require("react-redux");
+
+// src/store/create-store.ts
+var import_toolkit4 = require("@reduxjs/toolkit");
+init_storage();
+var saveToLocalStorage = (state, key) => {
+  try {
+    storage_default.setItem(key, state);
+  } catch (e) {
+    logger.error("[AlphaStore] Failed to save state:", e);
+  }
+};
+var loadFromLocalStorage = (key) => {
+  try {
+    const serializedState = storage_default.getItem(key);
+    if (serializedState === null) return void 0;
+    return serializedState;
+  } catch (e) {
+    logger.warn("[AlphaStore] Failed to load state:", e);
+    return void 0;
+  }
+};
+function createAlphaStore(customReducers, options = {}) {
+  const {
+    persist = true,
+    storageKey = "_alpha_state"
+  } = options;
+  const rootReducer = (0, import_toolkit4.combineReducers)({
+    // Core reducers (always included)
+    cache: cache_reducer_default,
+    thread: thread_reducer_default,
+    app: app_reducer_default,
+    // Custom app reducers
+    ...customReducers
+  });
+  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
+  const store = (0, import_toolkit4.configureStore)({
+    reducer: rootReducer,
+    // Type assertion needed for dynamic reducer combination
+    preloadedState,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+      immutableCheck: false,
+      serializableCheck: false
+      // Allow non-serializable values
+    })
+  });
+  if (persist) {
+    store.subscribe(() => {
+      saveToLocalStorage(store.getState(), storageKey);
+    });
+  }
+  return store;
+}
+var defaultStore = createAlphaStore();
+
+// src/store/contexts/alpha-provider.tsx
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var AlphaProvider = ({
   children,
@@ -2435,23 +2441,23 @@ var AlphaProvider = ({
       setEncryptionConfig(config2.encryption);
     }
   }, [config2]);
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_react_redux3.Provider, { store, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(config_context_default, { config: config2, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(app_context_default, { children }) }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_react_redux5.Provider, { store, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(config_context_default, { config: config2, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(app_context_default, { children }) }) });
 };
 
 // src/store/type-helpers.ts
-var import_react_redux4 = require("react-redux");
+var import_react_redux6 = require("react-redux");
 var import_toolkit5 = require("@reduxjs/toolkit");
 function createTypedSelector() {
-  return import_react_redux4.useSelector;
+  return import_react_redux6.useSelector;
 }
 function createTypedDispatch() {
-  return import_react_redux4.useDispatch;
+  return import_react_redux6.useDispatch;
 }
 function createSelector(selector) {
   return selector;
 }
-var useAppSelector = import_react_redux4.useSelector;
-var useAppDispatch = () => (0, import_react_redux4.useDispatch)();
+var useAppSelector = import_react_redux6.useSelector;
+var useAppDispatch = () => (0, import_react_redux6.useDispatch)();
 
 // src/utils/money.ts
 function formatMoney(num, decimal) {

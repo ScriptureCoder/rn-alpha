@@ -609,64 +609,13 @@ function shouldRetry(error) {
   return true;
 }
 
-// src/store/create-store.ts
-init_storage();
-import { configureStore, combineReducers } from "@reduxjs/toolkit";
-var saveToLocalStorage = (state, key) => {
-  try {
-    storage_default.setItem(key, state);
-  } catch (e) {
-    logger.error("[AlphaStore] Failed to save state:", e);
-  }
-};
-var loadFromLocalStorage = (key) => {
-  try {
-    const serializedState = storage_default.getItem(key);
-    if (serializedState === null) return void 0;
-    return serializedState;
-  } catch (e) {
-    logger.warn("[AlphaStore] Failed to load state:", e);
-    return void 0;
-  }
-};
-function createAlphaStore(customReducers, options = {}) {
-  const {
-    persist = true,
-    storageKey = "_alpha_state"
-  } = options;
-  const rootReducer = combineReducers({
-    // Core reducers (always included)
-    cache: cache_reducer_default,
-    thread: thread_reducer_default,
-    app: app_reducer_default,
-    // Custom app reducers
-    ...customReducers
-  });
-  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
-  const store = configureStore({
-    reducer: rootReducer,
-    // Type assertion needed for dynamic reducer combination
-    preloadedState,
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-      immutableCheck: false,
-      serializableCheck: false
-      // Allow non-serializable values
-    })
-  });
-  if (persist) {
-    store.subscribe(() => {
-      saveToLocalStorage(store.getState(), storageKey);
-    });
-  }
-  return store;
-}
-var defaultStore = createAlphaStore();
-
 // src/hooks/use-cache.tsx
+import { useStore } from "react-redux";
 var getItemId = (item, idRef) => {
   return item[idRef] || (item == null ? void 0 : item._id) || (item == null ? void 0 : item.id);
 };
 var useCache = () => {
+  const store = useStore();
   const dispatch = use_dispatch_default();
   const { auth: { userId } } = useApp();
   const getContext = useCallback2(
@@ -685,7 +634,7 @@ var useCache = () => {
   const getData = useCallback2(
     (key) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       return (_a = cacheState[key]) == null ? void 0 : _a.data;
     },
     []
@@ -705,7 +654,7 @@ var useCache = () => {
   const updateItem = useCallback2(
     (key, id, value, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const index = cache.findIndex((item) => getItemId(item, idRef) === id);
@@ -721,7 +670,7 @@ var useCache = () => {
   const getItem = useCallback2(
     (key, id, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         return cache.find((item) => getItemId(item, idRef) === id);
@@ -733,7 +682,7 @@ var useCache = () => {
   const updateValue = useCallback2(
     (key, arg, value) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, [arg]: value });
@@ -744,7 +693,7 @@ var useCache = () => {
   const updateValues = useCallback2(
     (key, values) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (!Array.isArray(cache) && typeof cache === "object") {
         setCache(key, { ...cache, ...values });
@@ -755,7 +704,7 @@ var useCache = () => {
   const prepend = useCallback2(
     (key, data) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.prepend({ key, value: data }));
@@ -768,7 +717,7 @@ var useCache = () => {
   const updateOrPrepend = useCallback2(
     (key, data, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         const dataId = getItemId(data, idRef);
@@ -789,7 +738,7 @@ var useCache = () => {
   const append = useCallback2(
     (key, data) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         dispatch(actions2.append({ key, value: data }));
@@ -802,7 +751,7 @@ var useCache = () => {
   const deleteItem = useCallback2(
     (key, id, idRef) => {
       var _a;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const cache = (_a = cacheState[key]) == null ? void 0 : _a.data;
       if (Array.isArray(cache)) {
         setCache(key, cache.filter((item) => getItemId(item, idRef) !== id));
@@ -819,7 +768,7 @@ var useCache = () => {
   const invalidateQueries = useCallback2(
     (pattern) => {
       const regex = typeof pattern === "string" ? new RegExp(`^${pattern}`) : pattern;
-      const cacheState = defaultStore.getState().cache;
+      const cacheState = store.getState().cache;
       const keysToInvalidate = Object.keys(cacheState).filter(
         (k) => regex.test(k)
       );
@@ -1677,7 +1626,9 @@ var useQuery = (route, args) => {
 var use_query_default = useQuery;
 
 // src/hooks/use-query-async.tsx
+import { useStore as useStore2 } from "react-redux";
 var useQueryAsync = () => {
+  const store = useStore2();
   const app = useApp();
   const { auth } = app;
   const { getContext } = use_cache_default();
@@ -1689,7 +1640,7 @@ var useQueryAsync = () => {
     const encryptionOptions = resolveEncryptionOptions(opts.encrypted, config2.defaultEncryption);
     const resolvedDataPath = opts.dataPath !== void 0 ? opts.dataPath : config2.dataPath;
     const policy = opts.networkPolicy || "cache-first";
-    const cacheState = defaultStore.getState().cache;
+    const cacheState = store.getState().cache;
     const cachedEntry = cacheState[key];
     const cachedData = getCacheData(cachedEntry);
     const performNetworkRequest = async () => {
@@ -2315,6 +2266,61 @@ function useRefetchInterval(enabled, refetch, interval) {
 // src/store/contexts/alpha-provider.tsx
 import { useMemo as useMemo4, useEffect as useEffect8 } from "react";
 import { Provider } from "react-redux";
+
+// src/store/create-store.ts
+init_storage();
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+var saveToLocalStorage = (state, key) => {
+  try {
+    storage_default.setItem(key, state);
+  } catch (e) {
+    logger.error("[AlphaStore] Failed to save state:", e);
+  }
+};
+var loadFromLocalStorage = (key) => {
+  try {
+    const serializedState = storage_default.getItem(key);
+    if (serializedState === null) return void 0;
+    return serializedState;
+  } catch (e) {
+    logger.warn("[AlphaStore] Failed to load state:", e);
+    return void 0;
+  }
+};
+function createAlphaStore(customReducers, options = {}) {
+  const {
+    persist = true,
+    storageKey = "_alpha_state"
+  } = options;
+  const rootReducer = combineReducers({
+    // Core reducers (always included)
+    cache: cache_reducer_default,
+    thread: thread_reducer_default,
+    app: app_reducer_default,
+    // Custom app reducers
+    ...customReducers
+  });
+  const preloadedState = persist ? loadFromLocalStorage(storageKey) : void 0;
+  const store = configureStore({
+    reducer: rootReducer,
+    // Type assertion needed for dynamic reducer combination
+    preloadedState,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+      immutableCheck: false,
+      serializableCheck: false
+      // Allow non-serializable values
+    })
+  });
+  if (persist) {
+    store.subscribe(() => {
+      saveToLocalStorage(store.getState(), storageKey);
+    });
+  }
+  return store;
+}
+var defaultStore = createAlphaStore();
+
+// src/store/contexts/alpha-provider.tsx
 import { jsx as jsx4 } from "react/jsx-runtime";
 var AlphaProvider = ({
   children,

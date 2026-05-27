@@ -1,7 +1,7 @@
 import http, { Method } from "../utils/service";
 import { useApp } from "store/contexts/app-context";
 import useDispatch from "./use-dispatch";
-import { store } from "store/index";
+import { useStore } from "react-redux";
 import { actions } from "store/reducers/cache-reducer";
 import * as network from "../store/reducers/thread-reducer";
 import useCache from "./use-cache";
@@ -59,6 +59,7 @@ type UseQueryAsyncReturn = (
  * @returns An async function to fetch data
  */
 const useQueryAsync = (): UseQueryAsyncReturn => {
+  const store = useStore() as any;
   const app = useApp();
   const { auth } = app;
   const { getContext } = useCache();

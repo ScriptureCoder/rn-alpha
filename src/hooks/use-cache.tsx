@@ -6,7 +6,7 @@ import { Route } from "types";
 import { parseRoute } from "hooks/utils";
 import { CacheOperations } from "./types";
 import { NetworkPolicy } from "hooks/constants";
-import { store } from "store/index";
+import { useStore } from "react-redux";
 
 /**
  * Helper function to get the ID from an item
@@ -22,6 +22,7 @@ const getItemId = (item: any, idRef?: string): string | undefined => {
  * @returns CacheOperations interface with all cache manipulation functions
  */
 const useCache = (): CacheOperations => {
+    const store = useStore() as any;
     const dispatch = useDispatch();
     const { auth: { userId } } = useApp();
     // const cacheState = useSelector((state) => state.cache);
