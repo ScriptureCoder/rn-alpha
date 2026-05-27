@@ -880,13 +880,13 @@ var useCache = () => {
           updated[index] = { ...updated[index], ...data };
           setCache(key, updated);
         } else {
-          setCache(key, [data, ...cache]);
+          dispatch(actions2.prepend({ key, value: data }));
         }
       } else {
         setCache(key, [data]);
       }
     },
-    [setCache]
+    [setCache, dispatch]
   );
   const append = (0, import_react2.useCallback)(
     (key, data) => {
@@ -1753,7 +1753,7 @@ var useQuery = (route, args) => {
         cache.append(key, newData);
       },
       updateOrPrepend: (value) => {
-        cache.updateOrPrepend(key, value);
+        cache.updateOrPrepend(key, value, idRef);
       }
     }),
     [key, cache, idRef]

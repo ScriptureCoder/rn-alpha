@@ -171,13 +171,13 @@ const useCache = (): CacheOperations => {
                     updated[index] = { ...updated[index], ...data };
                     setCache(key, updated);
                 } else {
-                    setCache(key, [data, ...cache]);
+                    dispatch(actions.prepend({ key, value: data }));
                 }
             } else {
                 setCache(key, [data]);
             }
         },
-        [setCache]
+        [setCache, dispatch]
     );
 
     /**

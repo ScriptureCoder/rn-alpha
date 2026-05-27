@@ -392,7 +392,7 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
         cache.append(key, newData);
       },
       updateOrPrepend: (value: any) => {
-        cache.updateOrPrepend(key, value)
+        cache.updateOrPrepend(key, value, idRef)
       },
     }),
     [key, cache, idRef]
