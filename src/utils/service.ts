@@ -258,7 +258,13 @@ async function http<T = any>(
     // Make the request
     const response: AxiosResponse = await axiosInstance.request(config);
 
-    logger.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
+    logger.log(
+      JSON.stringify(
+        {path, data: response.data, status: response.status},
+        null,
+        2,
+      ),
+    );
     // Format response based on options
     if (returnStatus) {
       return {

@@ -348,7 +348,13 @@ async function http(path, method = "GET", data, optionsOrStatus, legacyAuth, leg
       config2.data = formatRequestData(data, contentType, method);
     }
     const response = await axiosInstance.request(config2);
-    logger.log(JSON.stringify({ data: response.data, status: response.status }, null, 2));
+    logger.log(
+      JSON.stringify(
+        { path, data: response.data, status: response.status },
+        null,
+        2
+      )
+    );
     if (returnStatus) {
       return {
         data: returnText ? response.data : typeof response.data === "string" ? response.data : response.data,
