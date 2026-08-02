@@ -1250,61 +1250,59 @@ function decrypt(response, customKey, customIv) {
 // src/store/contexts/config-context.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var ConfigContext = (0, import_react4.createContext)(void 0);
+var mergeConfig = (base, incoming) => {
+  const merged = {
+    ...base,
+    ...incoming
+  };
+  if (incoming.cache !== void 0) {
+    merged.cache = {
+      ...base.cache,
+      ...incoming.cache
+    };
+  }
+  if (incoming.retry !== void 0) {
+    merged.retry = {
+      ...base.retry,
+      ...incoming.retry
+    };
+  }
+  return merged;
+};
 var ConfigProvider = ({ config: initialConfig, children }) => {
   var _a;
-  const [internalConfig, setInternalConfig] = (0, import_react4.useState)(() => ({
-    ...DEFAULT_CONFIG,
-    ...initialConfig,
-    cache: {
-      ...DEFAULT_CONFIG.cache,
-      ...initialConfig.cache
-    },
-    retry: {
-      ...DEFAULT_CONFIG.retry,
-      ...initialConfig.retry
+  const configRef = (0, import_react4.useRef)(null);
+  const applyConfig = (0, import_react4.useCallback)((cfg) => {
+    configRef.current = cfg;
+    setHttpConfig(cfg);
+    if (cfg.encryption) {
+      setEncryptionConfig(cfg.encryption);
     }
-  }));
-  (0, import_react4.useEffect)(() => {
-    setInternalConfig((prev) => ({
-      ...prev,
-      ...initialConfig,
-      cache: {
-        ...prev.cache,
-        ...initialConfig.cache
-      },
-      retry: {
-        ...prev.retry,
-        ...initialConfig.retry
-      }
-    }));
-  }, [initialConfig]);
-  const updateConfig = (0, import_react4.useCallback)((newConfig) => {
-    setInternalConfig((prev) => {
-      const updated = {
-        ...prev,
-        ...newConfig
-      };
-      if (newConfig.cache !== void 0) {
-        updated.cache = {
-          ...prev.cache,
-          ...newConfig.cache
-        };
-      }
-      if (newConfig.retry !== void 0) {
-        updated.retry = {
-          ...prev.retry,
-          ...newConfig.retry
-        };
-      }
-      if (newConfig.encryption !== void 0) {
-        updated.encryption = newConfig.encryption;
-      }
-      if (newConfig.defaultEncryption !== void 0) {
-        updated.defaultEncryption = newConfig.defaultEncryption;
-      }
-      return updated;
-    });
   }, []);
+  const [internalConfig, setInternalConfig] = (0, import_react4.useState)(() => {
+    const merged = mergeConfig(
+      {
+        ...DEFAULT_CONFIG,
+        cache: { ...DEFAULT_CONFIG.cache },
+        retry: { ...DEFAULT_CONFIG.retry }
+      },
+      initialConfig
+    );
+    applyConfig(merged);
+    return merged;
+  });
+  (0, import_react4.useEffect)(() => {
+    var _a2;
+    const updated = mergeConfig((_a2 = configRef.current) != null ? _a2 : DEFAULT_CONFIG, initialConfig);
+    applyConfig(updated);
+    setInternalConfig(updated);
+  }, [initialConfig, applyConfig]);
+  const updateConfig = (0, import_react4.useCallback)((newConfig) => {
+    var _a2;
+    const updated = mergeConfig((_a2 = configRef.current) != null ? _a2 : DEFAULT_CONFIG, newConfig);
+    applyConfig(updated);
+    setInternalConfig(updated);
+  }, [applyConfig]);
   (0, import_react4.useEffect)(() => {
     var _a2;
     if ((_a2 = internalConfig.cache) == null ? void 0 : _a2.maxSize) {
@@ -1319,14 +1317,6 @@ var ConfigProvider = ({ config: initialConfig, children }) => {
       disableGlobalDebug();
     }
   }, [internalConfig.debug]);
-  (0, import_react4.useEffect)(() => {
-    setHttpConfig(internalConfig);
-  }, [internalConfig]);
-  (0, import_react4.useEffect)(() => {
-    if (internalConfig.encryption) {
-      setEncryptionConfig(internalConfig.encryption);
-    }
-  }, [internalConfig.encryption]);
   const value = (0, import_react4.useMemo)(
     () => ({ config: internalConfig, updateConfig }),
     [internalConfig, updateConfig]

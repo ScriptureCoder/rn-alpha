@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, ReactNode, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode, useEffect, useState, useCallback, useRef } from 'react';
 import { AlphaConfig, DEFAULT_CONFIG } from '../../config';
 import { setMaxCacheSize } from 'store/reducers';
 import { enableGlobalDebug, disableGlobalDebug } from 'hooks/utils/debug-logger';
@@ -19,77 +19,82 @@ interface ConfigProviderProps {
 }
 
 /**
+ * Merge a partial config over a base config, deep-merging nested objects.
+ */
+const mergeConfig = (base: AlphaConfig, incoming: Partial<AlphaConfig>): AlphaConfig => {
+    const merged: AlphaConfig = {
+        ...base,
+        ...incoming,
+    };
+
+    if (incoming.cache !== undefined) {
+        merged.cache = {
+            ...base.cache,
+            ...incoming.cache,
+        };
+    }
+
+    if (incoming.retry !== undefined) {
+        merged.retry = {
+            ...base.retry,
+            ...incoming.retry,
+        };
+    }
+
+    return merged;
+};
+
+/**
  * Configuration Provider
  * Manages and distributes Alpha configuration throughout the app
  * Supports dynamic config updates via updateConfig function
  */
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ config: initialConfig, children }) => {
-    // Initialize with merged config
-    const [internalConfig, setInternalConfig] = useState<AlphaConfig>(() => ({
-        ...DEFAULT_CONFIG,
-        ...initialConfig,
-        cache: {
-            ...DEFAULT_CONFIG.cache,
-            ...initialConfig.cache,
-        },
-        retry: {
-            ...DEFAULT_CONFIG.retry,
-            ...initialConfig.retry,
-        },
-    }));
+    // Mirrors internalConfig, but updated synchronously so the HTTP client and
+    // crypto module never lag behind a setConfig() call. React state updates are
+    // async and child effects run before parent effects, so relying on state or
+    // useEffect alone lets a screen fire requests before its auth headers and
+    // encryption keys have been applied.
+    const configRef = useRef<AlphaConfig | null>(null);
+
+    // Push config into the HTTP client and crypto module immediately.
+    const applyConfig = useCallback((cfg: AlphaConfig) => {
+        configRef.current = cfg;
+        setHttpConfig(cfg);
+        if (cfg.encryption) {
+            setEncryptionConfig(cfg.encryption);
+        }
+    }, []);
+
+    // Initialize with merged config, applying it during the first render so the
+    // very first request already carries it.
+    const [internalConfig, setInternalConfig] = useState<AlphaConfig>(() => {
+        const merged = mergeConfig(
+            {
+                ...DEFAULT_CONFIG,
+                cache: { ...DEFAULT_CONFIG.cache },
+                retry: { ...DEFAULT_CONFIG.retry },
+            },
+            initialConfig
+        );
+        applyConfig(merged);
+        return merged;
+    });
 
     // Update internal config when prop changes (allows parent control)
     useEffect(() => {
-        setInternalConfig(prev => ({
-            ...prev,
-            ...initialConfig,
-            cache: {
-                ...prev.cache,
-                ...initialConfig.cache,
-            },
-            retry: {
-                ...prev.retry,
-                ...initialConfig.retry,
-            },
-        }));
-    }, [initialConfig]);
+        const updated = mergeConfig(configRef.current ?? DEFAULT_CONFIG, initialConfig);
+        applyConfig(updated);
+        setInternalConfig(updated);
+    }, [initialConfig, applyConfig]);
 
-    // Function to update config dynamically from child components
+    // Function to update config dynamically from child components.
+    // Applies synchronously, so callers may navigate immediately afterwards.
     const updateConfig = useCallback((newConfig: Partial<AlphaConfig>) => {
-        setInternalConfig(prev => {
-            const updated: AlphaConfig = {
-                ...prev,
-                ...newConfig,
-            };
-
-            // Deep merge nested objects
-            if (newConfig.cache !== undefined) {
-                updated.cache = {
-                    ...prev.cache,
-                    ...newConfig.cache,
-                };
-            }
-
-            if (newConfig.retry !== undefined) {
-                updated.retry = {
-                    ...prev.retry,
-                    ...newConfig.retry,
-                };
-            }
-
-            // Handle encryption config explicitly
-            if (newConfig.encryption !== undefined) {
-                updated.encryption = newConfig.encryption;
-            }
-
-            // Handle defaultEncryption explicitly
-            if (newConfig.defaultEncryption !== undefined) {
-                updated.defaultEncryption = newConfig.defaultEncryption;
-            }
-
-            return updated;
-        });
-    }, []);
+        const updated = mergeConfig(configRef.current ?? DEFAULT_CONFIG, newConfig);
+        applyConfig(updated);
+        setInternalConfig(updated);
+    }, [applyConfig]);
 
     // Apply cache max size
     useEffect(() => {
@@ -108,17 +113,8 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ config: initialC
         }
     }, [internalConfig.debug]);
 
-    // Update HTTP client when config changes
-    useEffect(() => {
-        setHttpConfig(internalConfig);
-    }, [internalConfig]);
-
-    // Update encryption config when it changes
-    useEffect(() => {
-        if (internalConfig.encryption) {
-            setEncryptionConfig(internalConfig.encryption);
-        }
-    }, [internalConfig.encryption]);
+    // NOTE: HTTP and encryption config are applied synchronously via
+    // applyConfig() rather than in an effect — see configRef above.
 
     const value = useMemo(
         () => ({ config: internalConfig, updateConfig }),

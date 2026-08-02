@@ -67,7 +67,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 // src/hooks/use-query.tsx
-import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef2, useCallback as useCallback4 } from "react";
+import { useEffect as useEffect4, useMemo as useMemo3, useRef as useRef3, useCallback as useCallback4 } from "react";
 
 // src/utils/service.ts
 import axios from "axios";
@@ -934,7 +934,7 @@ var extractResponseData = (response, dataPath) => {
 };
 
 // src/store/contexts/config-context.tsx
-import { createContext as createContext3, useContext as useContext3, useMemo as useMemo2, useEffect as useEffect3, useState as useState3, useCallback as useCallback3 } from "react";
+import { createContext as createContext3, useContext as useContext3, useMemo as useMemo2, useEffect as useEffect3, useState as useState3, useCallback as useCallback3, useRef as useRef2 } from "react";
 
 // src/hooks/utils/debug-logger.ts
 var QueryDebugger = class {
@@ -1153,61 +1153,59 @@ function decrypt(response, customKey, customIv) {
 // src/store/contexts/config-context.tsx
 import { jsx as jsx3 } from "react/jsx-runtime";
 var ConfigContext = createContext3(void 0);
+var mergeConfig = (base, incoming) => {
+  const merged = {
+    ...base,
+    ...incoming
+  };
+  if (incoming.cache !== void 0) {
+    merged.cache = {
+      ...base.cache,
+      ...incoming.cache
+    };
+  }
+  if (incoming.retry !== void 0) {
+    merged.retry = {
+      ...base.retry,
+      ...incoming.retry
+    };
+  }
+  return merged;
+};
 var ConfigProvider = ({ config: initialConfig, children }) => {
   var _a;
-  const [internalConfig, setInternalConfig] = useState3(() => ({
-    ...DEFAULT_CONFIG,
-    ...initialConfig,
-    cache: {
-      ...DEFAULT_CONFIG.cache,
-      ...initialConfig.cache
-    },
-    retry: {
-      ...DEFAULT_CONFIG.retry,
-      ...initialConfig.retry
+  const configRef = useRef2(null);
+  const applyConfig = useCallback3((cfg) => {
+    configRef.current = cfg;
+    setHttpConfig(cfg);
+    if (cfg.encryption) {
+      setEncryptionConfig(cfg.encryption);
     }
-  }));
-  useEffect3(() => {
-    setInternalConfig((prev) => ({
-      ...prev,
-      ...initialConfig,
-      cache: {
-        ...prev.cache,
-        ...initialConfig.cache
-      },
-      retry: {
-        ...prev.retry,
-        ...initialConfig.retry
-      }
-    }));
-  }, [initialConfig]);
-  const updateConfig = useCallback3((newConfig) => {
-    setInternalConfig((prev) => {
-      const updated = {
-        ...prev,
-        ...newConfig
-      };
-      if (newConfig.cache !== void 0) {
-        updated.cache = {
-          ...prev.cache,
-          ...newConfig.cache
-        };
-      }
-      if (newConfig.retry !== void 0) {
-        updated.retry = {
-          ...prev.retry,
-          ...newConfig.retry
-        };
-      }
-      if (newConfig.encryption !== void 0) {
-        updated.encryption = newConfig.encryption;
-      }
-      if (newConfig.defaultEncryption !== void 0) {
-        updated.defaultEncryption = newConfig.defaultEncryption;
-      }
-      return updated;
-    });
   }, []);
+  const [internalConfig, setInternalConfig] = useState3(() => {
+    const merged = mergeConfig(
+      {
+        ...DEFAULT_CONFIG,
+        cache: { ...DEFAULT_CONFIG.cache },
+        retry: { ...DEFAULT_CONFIG.retry }
+      },
+      initialConfig
+    );
+    applyConfig(merged);
+    return merged;
+  });
+  useEffect3(() => {
+    var _a2;
+    const updated = mergeConfig((_a2 = configRef.current) != null ? _a2 : DEFAULT_CONFIG, initialConfig);
+    applyConfig(updated);
+    setInternalConfig(updated);
+  }, [initialConfig, applyConfig]);
+  const updateConfig = useCallback3((newConfig) => {
+    var _a2;
+    const updated = mergeConfig((_a2 = configRef.current) != null ? _a2 : DEFAULT_CONFIG, newConfig);
+    applyConfig(updated);
+    setInternalConfig(updated);
+  }, [applyConfig]);
   useEffect3(() => {
     var _a2;
     if ((_a2 = internalConfig.cache) == null ? void 0 : _a2.maxSize) {
@@ -1222,14 +1220,6 @@ var ConfigProvider = ({ config: initialConfig, children }) => {
       disableGlobalDebug();
     }
   }, [internalConfig.debug]);
-  useEffect3(() => {
-    setHttpConfig(internalConfig);
-  }, [internalConfig]);
-  useEffect3(() => {
-    if (internalConfig.encryption) {
-      setEncryptionConfig(internalConfig.encryption);
-    }
-  }, [internalConfig.encryption]);
   const value = useMemo2(
     () => ({ config: internalConfig, updateConfig }),
     [internalConfig, updateConfig]
@@ -1354,7 +1344,7 @@ var useQuery = (route, args) => {
   const app = useApp();
   const { auth } = app;
   const cache = use_cache_default();
-  const instanceIdRef = useRef2(Date.now().toString() + Math.random().toString(36).substring(2, 7));
+  const instanceIdRef = useRef3(Date.now().toString() + Math.random().toString(36).substring(2, 7));
   const { key, path, method, variables } = cache.getContext(route, initVariables, networkPolicy, instanceIdRef.current);
   const policy = networkPolicy || "cache-first";
   const [config2] = useAlphaConfig();
@@ -1364,8 +1354,8 @@ var useQuery = (route, args) => {
   const thread = use_selector_default((state) => state.thread[key]);
   const dispatch = use_dispatch_default();
   const { connected } = useSocket();
-  const timeoutRef = useRef2(null);
-  const abortControllerRef = useRef2(null);
+  const timeoutRef = useRef3(null);
+  const abortControllerRef = useRef3(null);
   useEffect4(() => {
     if ((data == null ? void 0 : data.data) && onCompleted) {
       onCompleted(data == null ? void 0 : data.data);
@@ -1796,7 +1786,7 @@ var useQueryAsync = () => {
 var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
-import { useState as useState4, useCallback as useCallback5, useRef as useRef3, useEffect as useEffect5 } from "react";
+import { useState as useState4, useCallback as useCallback5, useRef as useRef4, useEffect as useEffect5 } from "react";
 import { Keyboard } from "react-native";
 var useMutation = (route, option) => {
   const [loading, setLoading] = useState4(false);
@@ -1809,7 +1799,7 @@ var useMutation = (route, option) => {
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
-  const abortControllerRef = useRef3(null);
+  const abortControllerRef = useRef4(null);
   useEffect5(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -1900,7 +1890,7 @@ var useMutation = (route, option) => {
 var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
-import { useCallback as useCallback6, useRef as useRef4, useEffect as useEffect6 } from "react";
+import { useCallback as useCallback6, useRef as useRef5, useEffect as useEffect6 } from "react";
 import { Keyboard as Keyboard2 } from "react-native";
 var useMutationAsync = (route, option) => {
   const app = useApp();
@@ -1909,7 +1899,7 @@ var useMutationAsync = (route, option) => {
   const [config2] = useAlphaConfig();
   const encryptionOptions = resolveEncryptionOptions(option == null ? void 0 : option.encrypted, config2.defaultEncryption);
   const resolvedDataPath = (option == null ? void 0 : option.dataPath) !== void 0 ? option.dataPath : config2.dataPath;
-  const abortControllerRef = useRef4(null);
+  const abortControllerRef = useRef5(null);
   useEffect6(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -2230,10 +2220,10 @@ function getOfflineQueue() {
 }
 
 // src/hooks/utils/refetch-manager.ts
-import { useEffect as useEffect7, useRef as useRef5 } from "react";
+import { useEffect as useEffect7, useRef as useRef6 } from "react";
 import { AppState } from "react-native";
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = useRef5(AppState.currentState);
+  const appState = useRef6(AppState.currentState);
   useEffect7(() => {
     if (!enabled) return;
     const subscription = AppState.addEventListener("change", (nextAppState) => {
@@ -2249,7 +2239,7 @@ function useRefetchOnFocus(enabled, refetch) {
 }
 function useRefetchOnReconnect(enabled, refetch) {
   const { connected } = useSocket();
-  const prevConnected = useRef5(connected);
+  const prevConnected = useRef6(connected);
   useEffect7(() => {
     if (enabled && connected && !prevConnected.current) {
       refetch();
