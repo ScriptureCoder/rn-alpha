@@ -65,12 +65,20 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
   // Use ref to store abort controller for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Handle data completion and retry on connection
+  // Tracks the previous connectivity value so the retry below only fires on an
+  // offline -> online transition. Refetching whenever `connected && error` holds
+  // loops forever: each refetch clears the error and sets it again, which
+  // changes the effect dependency and schedules the next refetch.
+  const prevConnectedRef = useRef<boolean | undefined>(connected);
+
+  // Handle data completion and retry on reconnection
   useEffect(() => {
     if (data?.data && onCompleted) {
       onCompleted(data?.data);
     }
-    if (connected && thread?.error && (!data || (Array.isArray(data) && data.length < 1))) {
+    const reconnected = !!connected && !prevConnectedRef.current;
+    prevConnectedRef.current = connected;
+    if (reconnected && thread?.error && (!data || (Array.isArray(data) && data.length < 1))) {
       refetch({});
     }
   }, [data, connected, thread?.error]);

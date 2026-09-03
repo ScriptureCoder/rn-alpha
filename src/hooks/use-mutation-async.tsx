@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import http, { Method } from "../utils/service";
 import { useApp } from "store/contexts/app-context";
-import { Keyboard } from "react-native";
+import { getPlatformAdapter } from "../platform/registry";
 import { Route } from "types";
 import useCache from "./use-cache";
 import { MutationOptions, MutationResult, MutationResponse, MutationAsyncResult } from "./types";
@@ -66,7 +66,7 @@ const useMutationAsync = <T = any,>(
         try {
             // Dismiss keyboard by default
             if (option?.keyboard === undefined || option?.keyboard) {
-                Keyboard.dismiss();
+                getPlatformAdapter().dismissKeyboard();
             }
 
             const { path, method, rawPath } = getContext(route, variables);

@@ -7,17 +7,7 @@ import uuid from 'react-native-uuid';
 import { Route } from '../../types';
 import { logger } from '../../utils/logger';
 
-// Import MMKV storage (has set, getString methods)
-let storage: any;
-try {
-  storage = require('../../utils/storage').default;
-} catch (e) {
-  // Fallback if storage not available
-  storage = {
-    set: () => { },
-    getString: () => undefined,
-  };
-}
+import storage from '../../utils/storage';
 
 export interface QueuedMutation {
   id: string;
@@ -142,7 +132,7 @@ export class OfflineQueue {
    */
   private async persist(): Promise<void> {
     try {
-      storage.set(STORAGE_KEY, JSON.stringify(this.queue));
+      storage.setItem(STORAGE_KEY, this.queue);
     } catch (error) {
       logger.error('[OfflineQueue] Failed to persist queue:', error);
     }
@@ -153,9 +143,9 @@ export class OfflineQueue {
    */
   private loadFromStorage(): void {
     try {
-      const stored = storage.getString(STORAGE_KEY);
-      if (stored) {
-        this.queue = JSON.parse(stored);
+      const stored = storage.getItem(STORAGE_KEY);
+      if (Array.isArray(stored)) {
+        this.queue = stored;
       }
     } catch (error) {
       logger.error('[OfflineQueue] Failed to load queue:', error);

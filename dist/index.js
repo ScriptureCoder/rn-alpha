@@ -4,9 +4,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -29,50 +26,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/utils/storage.ts
-var storage_exports = {};
-__export(storage_exports, {
-  default: () => storage_default
-});
-var import_react_native_mmkv, storage, Storage, storage_default;
-var init_storage = __esm({
-  "src/utils/storage.ts"() {
-    import_react_native_mmkv = require("react-native-mmkv");
-    storage = new import_react_native_mmkv.MMKV();
-    Storage = class {
-      constructor() {
-        this.setItem = (key, value) => {
-          try {
-            return storage.set(key, JSON.stringify(value));
-          } catch (e) {
-          }
-        };
-        this.getItem = (key) => {
-          try {
-            const value = storage.getString(key);
-            if (value) {
-              return JSON.parse(value);
-            }
-            return void 0;
-          } catch (e) {
-          }
-        };
-        this.removeItem = (key) => {
-          try {
-            storage.delete(key);
-          } catch (e) {
-          }
-        };
-        this.clear = async () => storage.clearAll();
-      }
-    };
-    storage_default = new Storage();
-  }
-});
-
 // src/index.ts
-var index_exports = {};
-__export(index_exports, {
+var src_exports = {};
+__export(src_exports, {
   AlphaProvider: () => AlphaProvider,
   AppProvider: () => app_context_default,
   DEFAULT_CACHE_TTL: () => DEFAULT_CACHE_TTL,
@@ -101,6 +57,9 @@ __export(index_exports, {
   createCacheEntry: () => createCacheEntry,
   createDebugger: () => createDebugger,
   createErrorResponse: () => createErrorResponse,
+  createMemoryAdapter: () => createMemoryAdapter,
+  createMemoryStorage: () => createMemoryStorage,
+  createNativeAdapter: () => createNativeAdapter,
   createSelector: () => createSelector,
   createSlice: () => import_toolkit5.createSlice,
   createSuccessResponse: () => createSuccessResponse,
@@ -128,6 +87,8 @@ __export(index_exports, {
   getMime: () => getMime,
   getOfflineQueue: () => getOfflineQueue,
   getOrCreateRequest: () => getOrCreateRequest,
+  getPlatformAdapter: () => getPlatformAdapter,
+  hasPlatformAdapter: () => hasPlatformAdapter,
   http: () => service_default,
   isAbortError: () => isAbortError3,
   isAuthError: () => isAuthError,
@@ -149,6 +110,7 @@ __export(index_exports, {
   setEncryptionConfig: () => setEncryptionConfig,
   setHttpConfig: () => setHttpConfig,
   setMaxCacheSize: () => setMaxCacheSize,
+  setPlatformAdapter: () => setPlatformAdapter,
   shouldRetry: () => shouldRetry2,
   storage: () => storage_default,
   store: () => defaultStore,
@@ -169,7 +131,178 @@ __export(index_exports, {
   useRefetchOnReconnect: () => useRefetchOnReconnect,
   useSelector: () => use_selector_default
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(src_exports);
+
+// src/platform/memory.ts
+function createMemoryStorage() {
+  const map = /* @__PURE__ */ new Map();
+  return {
+    getItem: (key) => map.get(key),
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    clear: () => {
+      map.clear();
+    }
+  };
+}
+function createMemoryAdapter() {
+  return {
+    name: "memory",
+    storage: createMemoryStorage(),
+    onConnectivityChange: (listener) => {
+      listener(true);
+      return () => {
+      };
+    },
+    onForeground: () => () => {
+    },
+    dismissKeyboard: () => {
+    },
+    toast: (message) => {
+      console.info("[rn-alpha-hooks] Toast:", message);
+    },
+    readFile: async () => null,
+    createAnimatedValue: (initialValue) => ({
+      value: initialValue,
+      setValue(next) {
+        this.value = next;
+      }
+    })
+  };
+}
+
+// src/utils/logger.ts
+var isDebugEnabled = typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
+var setLoggerDebugMode = (enabled) => {
+  isDebugEnabled = enabled;
+};
+var logger = {
+  log: (...args) => {
+    if (isDebugEnabled) console.log(...args);
+  },
+  warn: (...args) => {
+    if (isDebugEnabled) console.warn(...args);
+  },
+  error: (...args) => {
+    if (isDebugEnabled) console.error(...args);
+  },
+  info: (...args) => {
+    if (isDebugEnabled) console.info(...args);
+  },
+  debug: (...args) => {
+    if (isDebugEnabled) console.debug(...args);
+  }
+};
+
+// src/platform/registry.ts
+var adapter = null;
+var warnedAboutFallback = false;
+function setPlatformAdapter(next) {
+  adapter = next;
+  logger.debug(`[rn-alpha-hooks] Platform adapter set: ${next.name}`);
+}
+function getPlatformAdapter() {
+  if (!adapter) {
+    if (!warnedAboutFallback) {
+      warnedAboutFallback = true;
+      logger.warn(
+        '[rn-alpha-hooks] No platform adapter registered; using in-memory fallback. Import from "@scripturecoder/rn-alpha-hooks" (native) or "@scripturecoder/rn-alpha-hooks/web", or call setPlatformAdapter().'
+      );
+    }
+    adapter = createMemoryAdapter();
+  }
+  return adapter;
+}
+function hasPlatformAdapter() {
+  return adapter !== null;
+}
+
+// src/platform/native.ts
+var import_react_native_mmkv = require("react-native-mmkv");
+var import_netinfo = __toESM(require("@react-native-community/netinfo"));
+var import_react_native = require("react-native");
+var import_react_native_simple_toast = __toESM(require("react-native-simple-toast"));
+var import_react_native_blob_util = __toESM(require("react-native-blob-util"));
+function createMmkvStorage() {
+  let instance = null;
+  const mmkv = () => {
+    if (!instance) {
+      instance = new import_react_native_mmkv.MMKV();
+    }
+    return instance;
+  };
+  return {
+    getItem: (key) => {
+      try {
+        const raw = mmkv().getString(key);
+        return raw === void 0 ? void 0 : JSON.parse(raw);
+      } catch (e) {
+        return void 0;
+      }
+    },
+    setItem: (key, value) => {
+      try {
+        mmkv().set(key, JSON.stringify(value));
+      } catch (e) {
+      }
+    },
+    removeItem: (key) => {
+      try {
+        mmkv().delete(key);
+      } catch (e) {
+      }
+    },
+    clear: () => {
+      mmkv().clearAll();
+    }
+  };
+}
+function createNativeAdapter() {
+  return {
+    name: "react-native",
+    storage: createMmkvStorage(),
+    onConnectivityChange: (listener) => {
+      const unsubscribe = import_netinfo.default.addEventListener((state) => {
+        listener(!!state.isInternetReachable);
+      });
+      return () => unsubscribe();
+    },
+    onForeground: (listener) => {
+      let previous = import_react_native.AppState.currentState;
+      const subscription = import_react_native.AppState.addEventListener("change", (next) => {
+        if (previous.match(/inactive|background/) && next === "active") {
+          listener();
+        }
+        previous = next;
+      });
+      return () => subscription.remove();
+    },
+    dismissKeyboard: () => {
+      import_react_native.Keyboard.dismiss();
+    },
+    toast: (message, duration) => {
+      import_react_native_simple_toast.default.show(message, import_react_native_simple_toast.default[duration || "LONG"]);
+    },
+    readFile: async (path) => {
+      try {
+        return await import_react_native_blob_util.default.fs.readFile(path.replace("file://", ""), "base64");
+      } catch (error) {
+        logger.error("Error reading file:", error);
+        return null;
+      }
+    },
+    createAnimatedValue: (initialValue) => new import_react_native.Animated.Value(initialValue)
+  };
+}
+
+// src/platform/register-native.ts
+setPlatformAdapter(createNativeAdapter());
+
+// src/exports.ts
 var import_dayjs = __toESM(require("dayjs"));
 var import_relativeTime = __toESM(require("dayjs/plugin/relativeTime"));
 var import_utc = __toESM(require("dayjs/plugin/utc"));
@@ -210,29 +343,6 @@ var config = {
   baseUrl: ""
 };
 var config_default = config;
-
-// src/utils/logger.ts
-var isDebugEnabled = typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
-var setLoggerDebugMode = (enabled) => {
-  isDebugEnabled = enabled;
-};
-var logger = {
-  log: (...args) => {
-    if (isDebugEnabled) console.log(...args);
-  },
-  warn: (...args) => {
-    if (isDebugEnabled) console.warn(...args);
-  },
-  error: (...args) => {
-    if (isDebugEnabled) console.error(...args);
-  },
-  info: (...args) => {
-    if (isDebugEnabled) console.info(...args);
-  },
-  debug: (...args) => {
-    if (isDebugEnabled) console.debug(...args);
-  }
-};
 
 // src/utils/service.ts
 var currentConfig = DEFAULT_CONFIG;
@@ -379,7 +489,6 @@ var isAbortError = (error) => {
 
 // src/store/contexts/app-context.tsx
 var import_react = require("react");
-var import_netinfo = __toESM(require("@react-native-community/netinfo"));
 
 // src/hooks/use-selector.tsx
 var import_react_redux = require("react-redux");
@@ -432,7 +541,6 @@ var actions = appSlice.actions;
 var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
-var import_react_native = require("react-native");
 var import_react_native_uuid = __toESM(require("react-native-uuid"));
 var import_jsx_runtime = require("react/jsx-runtime");
 var AppContext = (0, import_react.createContext)(void 0);
@@ -447,17 +555,18 @@ var AppProvider = ({ children }) => {
   const state = use_selector_default((appState) => appState.app);
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = (0, import_react.useState)(false);
-  const scrollY = (0, import_react.useRef)(new import_react_native.Animated.Value(0)).current;
+  const scrollYRef = (0, import_react.useRef)(null);
+  if (scrollYRef.current === null) {
+    scrollYRef.current = getPlatformAdapter().createAnimatedValue(0);
+  }
+  const scrollY = scrollYRef.current;
   (0, import_react.useEffect)(() => {
     if (!state.deviceId) {
       value.setDeviceId(import_react_native_uuid.default.v4());
     }
   }, [state.deviceId]);
   (0, import_react.useEffect)(() => {
-    const unsubscribe = import_netinfo.default.addEventListener((internetState) => {
-      setConnected(!!internetState.isInternetReachable);
-    });
-    return () => unsubscribe();
+    return getPlatformAdapter().onConnectivityChange(setConnected);
   }, []);
   const value = (0, import_react.useMemo)(
     () => ({
@@ -912,11 +1021,26 @@ var use_cache_default = useCache;
 
 // src/store/contexts/socket-context.tsx
 var import_react3 = require("react");
-var import_netinfo2 = __toESM(require("@react-native-community/netinfo"));
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var defaultValue = {};
 var SocketContext = (0, import_react3.createContext)(defaultValue);
 var useSocket = () => (0, import_react3.useContext)(SocketContext);
+var SocketProvider = ({ children }) => {
+  const [connected, setConnected] = (0, import_react3.useState)(false);
+  (0, import_react3.useEffect)(() => {
+    return getPlatformAdapter().onConnectivityChange(setConnected);
+  }, []);
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+    SocketContext.Provider,
+    {
+      value: {
+        connected
+      },
+      children
+    }
+  );
+};
+var socket_context_default = SocketProvider;
 
 // src/hooks/constants.ts
 var NETWORK_TIMEOUT = 1e4;
@@ -1453,11 +1577,14 @@ var useQuery = (route, args) => {
   const { connected } = useSocket();
   const timeoutRef = (0, import_react5.useRef)(null);
   const abortControllerRef = (0, import_react5.useRef)(null);
+  const prevConnectedRef = (0, import_react5.useRef)(connected);
   (0, import_react5.useEffect)(() => {
     if ((data == null ? void 0 : data.data) && onCompleted) {
       onCompleted(data == null ? void 0 : data.data);
     }
-    if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
+    const reconnected = !!connected && !prevConnectedRef.current;
+    prevConnectedRef.current = connected;
+    if (reconnected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
       refetch({});
     }
   }, [data, connected, thread == null ? void 0 : thread.error]);
@@ -1884,7 +2011,6 @@ var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
 var import_react6 = require("react");
-var import_react_native2 = require("react-native");
 var useMutation = (route, option) => {
   const [loading, setLoading] = (0, import_react6.useState)(false);
   const [error, setError] = (0, import_react6.useState)(void 0);
@@ -1908,7 +2034,7 @@ var useMutation = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          import_react_native2.Keyboard.dismiss();
+          getPlatformAdapter().dismissKeyboard();
         }
         const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
@@ -1988,7 +2114,6 @@ var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
 var import_react7 = require("react");
-var import_react_native3 = require("react-native");
 var useMutationAsync = (route, option) => {
   const app = useApp();
   const { auth } = app;
@@ -2008,7 +2133,7 @@ var useMutationAsync = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          import_react_native3.Keyboard.dismiss();
+          getPlatformAdapter().dismissKeyboard();
         }
         const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
@@ -2192,16 +2317,34 @@ function addJitter(delay, jitterFactor) {
 
 // src/hooks/utils/offline-queue.ts
 var import_react_native_uuid2 = __toESM(require("react-native-uuid"));
-var storage2;
-try {
-  storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
-} catch (e) {
-  storage2 = {
-    set: () => {
-    },
-    getString: () => void 0
-  };
-}
+
+// src/utils/storage.ts
+var Storage = class {
+  constructor() {
+    this.setItem = (key, value) => {
+      try {
+        return getPlatformAdapter().storage.setItem(key, value);
+      } catch (e) {
+      }
+    };
+    this.getItem = (key) => {
+      try {
+        return getPlatformAdapter().storage.getItem(key);
+      } catch (e) {
+      }
+    };
+    this.removeItem = (key) => {
+      try {
+        getPlatformAdapter().storage.removeItem(key);
+      } catch (e) {
+      }
+    };
+    this.clear = async () => getPlatformAdapter().storage.clear();
+  }
+};
+var storage_default = new Storage();
+
+// src/hooks/utils/offline-queue.ts
 var STORAGE_KEY = "offline_mutation_queue";
 var DEFAULT_MAX_RETRIES = 3;
 var OfflineQueue = class {
@@ -2288,7 +2431,7 @@ var OfflineQueue = class {
    */
   async persist() {
     try {
-      storage2.set(STORAGE_KEY, JSON.stringify(this.queue));
+      storage_default.setItem(STORAGE_KEY, this.queue);
     } catch (error) {
       logger.error("[OfflineQueue] Failed to persist queue:", error);
     }
@@ -2298,9 +2441,9 @@ var OfflineQueue = class {
    */
   loadFromStorage() {
     try {
-      const stored = storage2.getString(STORAGE_KEY);
-      if (stored) {
-        this.queue = JSON.parse(stored);
+      const stored = storage_default.getItem(STORAGE_KEY);
+      if (Array.isArray(stored)) {
+        this.queue = stored;
       }
     } catch (error) {
       logger.error("[OfflineQueue] Failed to load queue:", error);
@@ -2318,20 +2461,10 @@ function getOfflineQueue() {
 
 // src/hooks/utils/refetch-manager.ts
 var import_react8 = require("react");
-var import_react_native4 = require("react-native");
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = (0, import_react8.useRef)(import_react_native4.AppState.currentState);
   (0, import_react8.useEffect)(() => {
     if (!enabled) return;
-    const subscription = import_react_native4.AppState.addEventListener("change", (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        refetch();
-      }
-      appState.current = nextAppState;
-    });
-    return () => {
-      subscription.remove();
-    };
+    return getPlatformAdapter().onForeground(refetch);
   }, [enabled, refetch]);
 }
 function useRefetchOnReconnect(enabled, refetch) {
@@ -2362,7 +2495,6 @@ var import_react_redux5 = require("react-redux");
 
 // src/store/create-store.ts
 var import_toolkit4 = require("@reduxjs/toolkit");
-init_storage();
 var saveToLocalStorage = (state, key) => {
   try {
     storage_default.setItem(key, state);
@@ -2437,7 +2569,7 @@ var AlphaProvider = ({
       setEncryptionConfig(config2.encryption);
     }
   }, [config2]);
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_react_redux5.Provider, { store, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(config_context_default, { config: config2, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(app_context_default, { children }) }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_react_redux5.Provider, { store, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(config_context_default, { config: config2, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(socket_context_default, { children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(app_context_default, { children }) }) }) });
 };
 
 // src/store/type-helpers.ts
@@ -2463,9 +2595,6 @@ function formatMoney(num, decimal) {
   return "-.--";
 }
 var money_default = formatMoney;
-
-// src/index.ts
-init_storage();
 
 // src/utils/getMime.ts
 function getMime(ext) {
@@ -2512,27 +2641,18 @@ function capitalize(string) {
 }
 
 // src/utils/toast.ts
-var import_react_native_simple_toast = __toESM(require("react-native-simple-toast"));
 var Toast = (message, duration) => {
   setTimeout(() => {
-    import_react_native_simple_toast.default.show(message, import_react_native_simple_toast.default[duration || "LONG"]);
+    getPlatformAdapter().toast(message, duration || "LONG");
   }, 100);
 };
 var toast_default = Toast;
 
 // src/utils/readFile.ts
-var import_react_native_blob_util = __toESM(require("react-native-blob-util"));
-var readFile = async (path) => {
-  try {
-    return await import_react_native_blob_util.default.fs.readFile(path.replace("file://", ""), "base64");
-  } catch (error) {
-    logger.error("Error reading file:", error);
-    return null;
-  }
-};
+var readFile = async (path) => getPlatformAdapter().readFile(path);
 var readFile_default = readFile;
 
-// src/index.ts
+// src/exports.ts
 import_dayjs.default.extend(import_relativeTime.default);
 import_dayjs.default.extend(import_utc.default);
 import_dayjs.default.extend(import_timezone.default);
@@ -2566,6 +2686,9 @@ import_dayjs.default.extend(import_timezone.default);
   createCacheEntry,
   createDebugger,
   createErrorResponse,
+  createMemoryAdapter,
+  createMemoryStorage,
+  createNativeAdapter,
   createSelector,
   createSlice,
   createSuccessResponse,
@@ -2593,6 +2716,8 @@ import_dayjs.default.extend(import_timezone.default);
   getMime,
   getOfflineQueue,
   getOrCreateRequest,
+  getPlatformAdapter,
+  hasPlatformAdapter,
   http,
   isAbortError,
   isAuthError,
@@ -2614,6 +2739,7 @@ import_dayjs.default.extend(import_timezone.default);
   setEncryptionConfig,
   setHttpConfig,
   setMaxCacheSize,
+  setPlatformAdapter,
   shouldRetry,
   storage,
   store,

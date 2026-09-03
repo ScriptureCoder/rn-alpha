@@ -1,66 +1,173 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/utils/storage.ts
-var storage_exports = {};
-__export(storage_exports, {
-  default: () => storage_default
-});
-import { MMKV } from "react-native-mmkv";
-var storage, Storage, storage_default;
-var init_storage = __esm({
-  "src/utils/storage.ts"() {
-    storage = new MMKV();
-    Storage = class {
-      constructor() {
-        this.setItem = (key, value) => {
-          try {
-            return storage.set(key, JSON.stringify(value));
-          } catch (e) {
-          }
-        };
-        this.getItem = (key) => {
-          try {
-            const value = storage.getString(key);
-            if (value) {
-              return JSON.parse(value);
-            }
-            return void 0;
-          } catch (e) {
-          }
-        };
-        this.removeItem = (key) => {
-          try {
-            storage.delete(key);
-          } catch (e) {
-          }
-        };
-        this.clear = async () => storage.clearAll();
+// src/platform/memory.ts
+function createMemoryStorage() {
+  const map = /* @__PURE__ */ new Map();
+  return {
+    getItem: (key) => map.get(key),
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    clear: () => {
+      map.clear();
+    }
+  };
+}
+function createMemoryAdapter() {
+  return {
+    name: "memory",
+    storage: createMemoryStorage(),
+    onConnectivityChange: (listener) => {
+      listener(true);
+      return () => {
+      };
+    },
+    onForeground: () => () => {
+    },
+    dismissKeyboard: () => {
+    },
+    toast: (message) => {
+      console.info("[rn-alpha-hooks] Toast:", message);
+    },
+    readFile: async () => null,
+    createAnimatedValue: (initialValue) => ({
+      value: initialValue,
+      setValue(next) {
+        this.value = next;
       }
-    };
-    storage_default = new Storage();
-  }
-});
+    })
+  };
+}
 
-// src/index.ts
+// src/utils/logger.ts
+var isDebugEnabled = typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
+var setLoggerDebugMode = (enabled) => {
+  isDebugEnabled = enabled;
+};
+var logger = {
+  log: (...args) => {
+    if (isDebugEnabled) console.log(...args);
+  },
+  warn: (...args) => {
+    if (isDebugEnabled) console.warn(...args);
+  },
+  error: (...args) => {
+    if (isDebugEnabled) console.error(...args);
+  },
+  info: (...args) => {
+    if (isDebugEnabled) console.info(...args);
+  },
+  debug: (...args) => {
+    if (isDebugEnabled) console.debug(...args);
+  }
+};
+
+// src/platform/registry.ts
+var adapter = null;
+var warnedAboutFallback = false;
+function setPlatformAdapter(next) {
+  adapter = next;
+  logger.debug(`[rn-alpha-hooks] Platform adapter set: ${next.name}`);
+}
+function getPlatformAdapter() {
+  if (!adapter) {
+    if (!warnedAboutFallback) {
+      warnedAboutFallback = true;
+      logger.warn(
+        '[rn-alpha-hooks] No platform adapter registered; using in-memory fallback. Import from "@scripturecoder/rn-alpha-hooks" (native) or "@scripturecoder/rn-alpha-hooks/web", or call setPlatformAdapter().'
+      );
+    }
+    adapter = createMemoryAdapter();
+  }
+  return adapter;
+}
+function hasPlatformAdapter() {
+  return adapter !== null;
+}
+
+// src/platform/native.ts
+import { MMKV } from "react-native-mmkv";
+import NetInfo from "@react-native-community/netinfo";
+import { Animated, AppState, Keyboard } from "react-native";
+import SimpleToast from "react-native-simple-toast";
+import RNFetchBlob from "react-native-blob-util";
+function createMmkvStorage() {
+  let instance = null;
+  const mmkv = () => {
+    if (!instance) {
+      instance = new MMKV();
+    }
+    return instance;
+  };
+  return {
+    getItem: (key) => {
+      try {
+        const raw = mmkv().getString(key);
+        return raw === void 0 ? void 0 : JSON.parse(raw);
+      } catch (e) {
+        return void 0;
+      }
+    },
+    setItem: (key, value) => {
+      try {
+        mmkv().set(key, JSON.stringify(value));
+      } catch (e) {
+      }
+    },
+    removeItem: (key) => {
+      try {
+        mmkv().delete(key);
+      } catch (e) {
+      }
+    },
+    clear: () => {
+      mmkv().clearAll();
+    }
+  };
+}
+function createNativeAdapter() {
+  return {
+    name: "react-native",
+    storage: createMmkvStorage(),
+    onConnectivityChange: (listener) => {
+      const unsubscribe = NetInfo.addEventListener((state) => {
+        listener(!!state.isInternetReachable);
+      });
+      return () => unsubscribe();
+    },
+    onForeground: (listener) => {
+      let previous = AppState.currentState;
+      const subscription = AppState.addEventListener("change", (next) => {
+        if (previous.match(/inactive|background/) && next === "active") {
+          listener();
+        }
+        previous = next;
+      });
+      return () => subscription.remove();
+    },
+    dismissKeyboard: () => {
+      Keyboard.dismiss();
+    },
+    toast: (message, duration) => {
+      SimpleToast.show(message, SimpleToast[duration || "LONG"]);
+    },
+    readFile: async (path) => {
+      try {
+        return await RNFetchBlob.fs.readFile(path.replace("file://", ""), "base64");
+      } catch (error) {
+        logger.error("Error reading file:", error);
+        return null;
+      }
+    },
+    createAnimatedValue: (initialValue) => new Animated.Value(initialValue)
+  };
+}
+
+// src/platform/register-native.ts
+setPlatformAdapter(createNativeAdapter());
+
+// src/exports.ts
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
@@ -101,29 +208,6 @@ var config = {
   baseUrl: ""
 };
 var config_default = config;
-
-// src/utils/logger.ts
-var isDebugEnabled = typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
-var setLoggerDebugMode = (enabled) => {
-  isDebugEnabled = enabled;
-};
-var logger = {
-  log: (...args) => {
-    if (isDebugEnabled) console.log(...args);
-  },
-  warn: (...args) => {
-    if (isDebugEnabled) console.warn(...args);
-  },
-  error: (...args) => {
-    if (isDebugEnabled) console.error(...args);
-  },
-  info: (...args) => {
-    if (isDebugEnabled) console.info(...args);
-  },
-  debug: (...args) => {
-    if (isDebugEnabled) console.debug(...args);
-  }
-};
 
 // src/utils/service.ts
 var currentConfig = DEFAULT_CONFIG;
@@ -277,7 +361,6 @@ import {
   useRef,
   useState
 } from "react";
-import NetInfo from "@react-native-community/netinfo";
 
 // src/hooks/use-selector.tsx
 import { useSelector as Selector } from "react-redux";
@@ -330,7 +413,6 @@ var actions = appSlice.actions;
 var app_reducer_default = appSlice.reducer;
 
 // src/store/contexts/app-context.tsx
-import { Animated } from "react-native";
 import uuid from "react-native-uuid";
 import { jsx } from "react/jsx-runtime";
 var AppContext = createContext(void 0);
@@ -345,17 +427,18 @@ var AppProvider = ({ children }) => {
   const state = use_selector_default((appState) => appState.app);
   const dispatch = use_dispatch_default();
   const [connected, setConnected] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollYRef = useRef(null);
+  if (scrollYRef.current === null) {
+    scrollYRef.current = getPlatformAdapter().createAnimatedValue(0);
+  }
+  const scrollY = scrollYRef.current;
   useEffect(() => {
     if (!state.deviceId) {
       value.setDeviceId(uuid.v4());
     }
   }, [state.deviceId]);
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((internetState) => {
-      setConnected(!!internetState.isInternetReachable);
-    });
-    return () => unsubscribe();
+    return getPlatformAdapter().onConnectivityChange(setConnected);
   }, []);
   const value = useMemo(
     () => ({
@@ -815,11 +898,26 @@ import {
   useEffect as useEffect2,
   useState as useState2
 } from "react";
-import NetInfo2 from "@react-native-community/netinfo";
 import { jsx as jsx2 } from "react/jsx-runtime";
 var defaultValue = {};
 var SocketContext = createContext2(defaultValue);
 var useSocket = () => useContext2(SocketContext);
+var SocketProvider = ({ children }) => {
+  const [connected, setConnected] = useState2(false);
+  useEffect2(() => {
+    return getPlatformAdapter().onConnectivityChange(setConnected);
+  }, []);
+  return /* @__PURE__ */ jsx2(
+    SocketContext.Provider,
+    {
+      value: {
+        connected
+      },
+      children
+    }
+  );
+};
+var socket_context_default = SocketProvider;
 
 // src/hooks/constants.ts
 var NETWORK_TIMEOUT = 1e4;
@@ -1356,11 +1454,14 @@ var useQuery = (route, args) => {
   const { connected } = useSocket();
   const timeoutRef = useRef3(null);
   const abortControllerRef = useRef3(null);
+  const prevConnectedRef = useRef3(connected);
   useEffect4(() => {
     if ((data == null ? void 0 : data.data) && onCompleted) {
       onCompleted(data == null ? void 0 : data.data);
     }
-    if (connected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
+    const reconnected = !!connected && !prevConnectedRef.current;
+    prevConnectedRef.current = connected;
+    if (reconnected && (thread == null ? void 0 : thread.error) && (!data || Array.isArray(data) && data.length < 1)) {
       refetch({});
     }
   }, [data, connected, thread == null ? void 0 : thread.error]);
@@ -1787,7 +1888,6 @@ var use_query_async_default = useQueryAsync;
 
 // src/hooks/use-mutation.tsx
 import { useState as useState4, useCallback as useCallback5, useRef as useRef4, useEffect as useEffect5 } from "react";
-import { Keyboard } from "react-native";
 var useMutation = (route, option) => {
   const [loading, setLoading] = useState4(false);
   const [error, setError] = useState4(void 0);
@@ -1811,7 +1911,7 @@ var useMutation = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          Keyboard.dismiss();
+          getPlatformAdapter().dismissKeyboard();
         }
         const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
@@ -1891,7 +1991,6 @@ var use_mutation_default = useMutation;
 
 // src/hooks/use-mutation-async.tsx
 import { useCallback as useCallback6, useRef as useRef5, useEffect as useEffect6 } from "react";
-import { Keyboard as Keyboard2 } from "react-native";
 var useMutationAsync = (route, option) => {
   const app = useApp();
   const { auth } = app;
@@ -1911,7 +2010,7 @@ var useMutationAsync = (route, option) => {
     async (variables) => {
       try {
         if ((option == null ? void 0 : option.keyboard) === void 0 || (option == null ? void 0 : option.keyboard)) {
-          Keyboard2.dismiss();
+          getPlatformAdapter().dismissKeyboard();
         }
         const { path, method, rawPath } = getContext(route, variables);
         if (abortControllerRef.current) {
@@ -2095,16 +2194,34 @@ function addJitter(delay, jitterFactor) {
 
 // src/hooks/utils/offline-queue.ts
 import uuid2 from "react-native-uuid";
-var storage2;
-try {
-  storage2 = (init_storage(), __toCommonJS(storage_exports)).default;
-} catch (e) {
-  storage2 = {
-    set: () => {
-    },
-    getString: () => void 0
-  };
-}
+
+// src/utils/storage.ts
+var Storage = class {
+  constructor() {
+    this.setItem = (key, value) => {
+      try {
+        return getPlatformAdapter().storage.setItem(key, value);
+      } catch (e) {
+      }
+    };
+    this.getItem = (key) => {
+      try {
+        return getPlatformAdapter().storage.getItem(key);
+      } catch (e) {
+      }
+    };
+    this.removeItem = (key) => {
+      try {
+        getPlatformAdapter().storage.removeItem(key);
+      } catch (e) {
+      }
+    };
+    this.clear = async () => getPlatformAdapter().storage.clear();
+  }
+};
+var storage_default = new Storage();
+
+// src/hooks/utils/offline-queue.ts
 var STORAGE_KEY = "offline_mutation_queue";
 var DEFAULT_MAX_RETRIES = 3;
 var OfflineQueue = class {
@@ -2191,7 +2308,7 @@ var OfflineQueue = class {
    */
   async persist() {
     try {
-      storage2.set(STORAGE_KEY, JSON.stringify(this.queue));
+      storage_default.setItem(STORAGE_KEY, this.queue);
     } catch (error) {
       logger.error("[OfflineQueue] Failed to persist queue:", error);
     }
@@ -2201,9 +2318,9 @@ var OfflineQueue = class {
    */
   loadFromStorage() {
     try {
-      const stored = storage2.getString(STORAGE_KEY);
-      if (stored) {
-        this.queue = JSON.parse(stored);
+      const stored = storage_default.getItem(STORAGE_KEY);
+      if (Array.isArray(stored)) {
+        this.queue = stored;
       }
     } catch (error) {
       logger.error("[OfflineQueue] Failed to load queue:", error);
@@ -2221,20 +2338,10 @@ function getOfflineQueue() {
 
 // src/hooks/utils/refetch-manager.ts
 import { useEffect as useEffect7, useRef as useRef6 } from "react";
-import { AppState } from "react-native";
 function useRefetchOnFocus(enabled, refetch) {
-  const appState = useRef6(AppState.currentState);
   useEffect7(() => {
     if (!enabled) return;
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-        refetch();
-      }
-      appState.current = nextAppState;
-    });
-    return () => {
-      subscription.remove();
-    };
+    return getPlatformAdapter().onForeground(refetch);
   }, [enabled, refetch]);
 }
 function useRefetchOnReconnect(enabled, refetch) {
@@ -2264,7 +2371,6 @@ import { useMemo as useMemo4, useEffect as useEffect8 } from "react";
 import { Provider } from "react-redux";
 
 // src/store/create-store.ts
-init_storage();
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 var saveToLocalStorage = (state, key) => {
   try {
@@ -2340,7 +2446,7 @@ var AlphaProvider = ({
       setEncryptionConfig(config2.encryption);
     }
   }, [config2]);
-  return /* @__PURE__ */ jsx4(Provider, { store, children: /* @__PURE__ */ jsx4(config_context_default, { config: config2, children: /* @__PURE__ */ jsx4(app_context_default, { children }) }) });
+  return /* @__PURE__ */ jsx4(Provider, { store, children: /* @__PURE__ */ jsx4(config_context_default, { config: config2, children: /* @__PURE__ */ jsx4(socket_context_default, { children: /* @__PURE__ */ jsx4(app_context_default, { children }) }) }) });
 };
 
 // src/store/type-helpers.ts
@@ -2366,9 +2472,6 @@ function formatMoney(num, decimal) {
   return "-.--";
 }
 var money_default = formatMoney;
-
-// src/index.ts
-init_storage();
 
 // src/utils/getMime.ts
 function getMime(ext) {
@@ -2415,27 +2518,18 @@ function capitalize(string) {
 }
 
 // src/utils/toast.ts
-import SimpleToast from "react-native-simple-toast";
 var Toast = (message, duration) => {
   setTimeout(() => {
-    SimpleToast.show(message, SimpleToast[duration || "LONG"]);
+    getPlatformAdapter().toast(message, duration || "LONG");
   }, 100);
 };
 var toast_default = Toast;
 
 // src/utils/readFile.ts
-import RNFetchBlob from "react-native-blob-util";
-var readFile = async (path) => {
-  try {
-    return await RNFetchBlob.fs.readFile(path.replace("file://", ""), "base64");
-  } catch (error) {
-    logger.error("Error reading file:", error);
-    return null;
-  }
-};
+var readFile = async (path) => getPlatformAdapter().readFile(path);
 var readFile_default = readFile;
 
-// src/index.ts
+// src/exports.ts
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -2468,6 +2562,9 @@ export {
   createCacheEntry,
   createDebugger,
   createErrorResponse,
+  createMemoryAdapter,
+  createMemoryStorage,
+  createNativeAdapter,
   createSelector,
   createSlice4 as createSlice,
   createSuccessResponse,
@@ -2495,6 +2592,8 @@ export {
   getMime,
   getOfflineQueue,
   getOrCreateRequest,
+  getPlatformAdapter,
+  hasPlatformAdapter,
   service_default as http,
   isAbortError3 as isAbortError,
   isAuthError,
@@ -2516,6 +2615,7 @@ export {
   setEncryptionConfig,
   setHttpConfig,
   setMaxCacheSize,
+  setPlatformAdapter,
   shouldRetry2 as shouldRetry,
   storage_default as storage,
   defaultStore as store,

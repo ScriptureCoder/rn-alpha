@@ -1,7 +1,7 @@
 {
   "name": "@scripturecoder/rn-alpha-hooks",
   "version": "0.8.7-alpha",
-  "description": "Flexible React Native hooks, extensible store, and utilities with TypeScript support.",
+  "description": "Flexible React Native and React web hooks, extensible store, and utilities with TypeScript support.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -13,9 +13,29 @@
   ],
   "exports": {
     ".": {
+      "react-native": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "default": "./dist/index.js"
+      },
+      "browser": {
+        "types": "./dist/web.d.ts",
+        "import": "./dist/web.mjs",
+        "default": "./dist/web.js"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.js"
+    },
+    "./native": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.mjs",
+      "default": "./dist/web.js"
     },
     "./package.json": "./package.json"
   },
@@ -45,6 +65,26 @@
     "react-native-mmkv": ">=3.0.0",
     "react-native-simple-toast": ">=3.0.0",
     "react-redux": ">=9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    },
+    "@react-native-community/netinfo": {
+      "optional": true
+    },
+    "@react-navigation/native": {
+      "optional": true
+    },
+    "react-native-blob-util": {
+      "optional": true
+    },
+    "react-native-mmkv": {
+      "optional": true
+    },
+    "react-native-simple-toast": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@react-native-community/netinfo": "^11.4.1",
@@ -82,7 +122,10 @@
     "mutations",
     "offline-first",
     "request-cancellation",
-    "react-native-hooks"
+    "react-native-hooks",
+    "react",
+    "web",
+    "react-dom"
   ],
   "author": "scripturecoder",
   "license": "MIT",

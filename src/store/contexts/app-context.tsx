@@ -5,12 +5,11 @@ import React, {
     useMemo, useRef,
     useState,
 } from 'react';
-import NetInfo from '@react-native-community/netinfo';
 import useSelector from '../../hooks/use-selector';
 import useDispatch from '../../hooks/use-dispatch';
 import { actions, CoreAppState } from '../reducers/app-reducer';
-import {Animated} from "react-native";
 import uuid from "react-native-uuid";
+import { getPlatformAdapter } from "../../platform/registry";
 
 /**
  * Core app context type
@@ -24,7 +23,8 @@ export interface AppContextValue {
     connected: boolean;
     deviceId: string;
     email: string;
-    scrollY: Animated.Value
+    /** `Animated.Value` on React Native, a plain `{ value, setValue }` object on the web. */
+    scrollY: any
 
     // Core actions
     setAuth: (payload: Partial<CoreAppState['auth']>) => void;
@@ -76,7 +76,11 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const state = useSelector((appState) => appState.app);
     const dispatch = useDispatch();
     const [connected, setConnected] = useState(false);
-    const scrollY = useRef(new Animated.Value(0)).current
+    const scrollYRef = useRef<any>(null);
+    if (scrollYRef.current === null) {
+        scrollYRef.current = getPlatformAdapter().createAnimatedValue(0);
+    }
+    const scrollY = scrollYRef.current;
 
     useEffect(()=>{
         if (!state.deviceId){
@@ -86,10 +90,7 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     // Network connectivity monitoring
     useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener((internetState) => {
-            setConnected(!!internetState.isInternetReachable);
-        });
-        return () => unsubscribe();
+        return getPlatformAdapter().onConnectivityChange(setConnected);
     }, []);
 
     // Core context value - minimal and essential only

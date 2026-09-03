@@ -1,13 +1,9 @@
-import RNFetchBlob from 'react-native-blob-util';
-import { logger } from './logger';
+import { getPlatformAdapter } from '../platform/registry';
 
-const readFile = async (path: string) => {
-	try {
-		return await RNFetchBlob.fs.readFile(path.replace("file://", ""), 'base64');
-	} catch (error) {
-		logger.error('Error reading file:', error);
-		return null;
-	}
-};
+/**
+ * Reads a file and returns its base64 contents (null on failure).
+ * Uses react-native-blob-util on native and fetch + FileReader on the web.
+ */
+const readFile = async (path: string) => getPlatformAdapter().readFile(path);
 
-export default readFile
+export default readFile;

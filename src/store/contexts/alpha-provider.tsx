@@ -3,6 +3,7 @@ import { Provider } from 'react-redux';
 import { Store } from '@reduxjs/toolkit';
 import AppProvider from './app-context';
 import ConfigProvider from './config-context';
+import SocketProvider from './socket-context';
 import { AlphaConfig } from '../../config';
 import { createAlphaStore, CustomReducers, StoreOptions, defaultStore } from '../create-store';
 import { setHttpConfig } from '../../utils/service';
@@ -22,7 +23,7 @@ interface AlphaProviderProps {
 
 /**
  * Root provider for rn-alpha package
- * Wraps your app with Redux, Config, and App contexts
+ * Wraps your app with Redux, Config, Socket (connectivity), and App contexts
  * Now supports custom reducers and store configuration
  * 
  * @example
@@ -96,9 +97,11 @@ export const AlphaProvider: React.FC<AlphaProviderProps> = ({
   return (
     <Provider store={store}>
       <ConfigProvider config={config}>
-        <AppProvider>
-          {children}
-        </AppProvider>
+        <SocketProvider>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </SocketProvider>
       </ConfigProvider>
     </Provider>
   );

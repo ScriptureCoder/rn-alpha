@@ -1,6 +1,6 @@
 # @scripturecoder/rn-alpha-hooks
 
-> A comprehensive React Native hooks, store, and utility toolkit with TypeScript support.
+> A comprehensive React Native **and React web** hooks, store, and utility toolkit with TypeScript support.
 
 [![npm version](https://img.shields.io/npm/v/@scripturecoder/rn-alpha-hooks.svg)](https://www.npmjs.com/package/@scripturecoder/rn-alpha-hooks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -10,6 +10,7 @@
 ## 📑 Table of Contents
 
 - [Installation](#installation)
+- [Web (React DOM) Support](#web-react-dom-support)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
   - [Configuration Options](#configuration-options)
@@ -80,6 +81,52 @@ npm install @react-native-community/netinfo react-native-blob-util react-native-
 ```
 
 The versions listed in `package.json` are **minimum compatible versions**. You can use newer versions as long as they remain API-compatible.
+
+---
+
+## Web (React DOM) Support
+
+The same hooks, store and utilities run in the browser. Import from the `/web` entry point instead of the package root:
+
+```typescript
+// React Native
+import { AlphaProvider, useQuery } from '@scripturecoder/rn-alpha-hooks';
+
+// React web (Vite, Next.js, CRA, ...)
+import { AlphaProvider, useQuery } from '@scripturecoder/rn-alpha-hooks/web';
+```
+
+**Full guide:** see [WEB_USAGE.md](./WEB_USAGE.md) for setup with Vite/Next.js, authentication, persistence, SSR, Jest and troubleshooting.
+
+Bundlers that honour the `browser` export condition (Vite, webpack, esbuild) also resolve the bare package name to the web build, but the explicit `/web` import is recommended because it also gives you web-only TypeScript types. On the web **none of the React Native peer dependencies are required** – only `react`, `react-redux` and `@reduxjs/toolkit`.
+
+Platform-specific behaviour is provided by a small adapter:
+
+| Capability | React Native | Web |
+|-----------|--------------|-----|
+| Persistent storage (`storage`, store persistence, offline queue) | `react-native-mmkv` | `localStorage` (in-memory fallback during SSR) |
+| Connectivity (`connected`, refetch on reconnect) | `@react-native-community/netinfo` | `navigator.onLine` + `online`/`offline` events |
+| Refetch on focus | `AppState` | `document.visibilitychange` |
+| Keyboard dismiss on mutation | `Keyboard.dismiss()` | `document.activeElement.blur()` |
+| `Toast()` | `react-native-simple-toast` | Minimal DOM toast |
+| `readFile()` | `react-native-blob-util` | `fetch` + `FileReader` (base64) |
+| `useApp().scrollY` | `Animated.Value` | `{ value, setValue }` object |
+
+### Custom Platform Adapter
+
+To swap an implementation (for example AsyncStorage instead of MMKV, or your own toast component), register an adapter **before** rendering `AlphaProvider`:
+
+```typescript
+import { setPlatformAdapter, createNativeAdapter } from '@scripturecoder/rn-alpha-hooks';
+
+const base = createNativeAdapter();
+setPlatformAdapter({
+  ...base,
+  toast: (message) => myToastLibrary.show(message),
+});
+```
+
+`createWebAdapter` is exported from the `/web` entry for the same purpose, and `createMemoryAdapter` gives you a no-op adapter for tests.
 
 ---
 

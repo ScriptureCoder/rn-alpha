@@ -30,6 +30,9 @@
   },
   "include": [
     "src/index.ts",
+    "src/web.ts",
+    "src/exports.ts",
+    "src/platform/**/*",
     "src/hooks/**/*",
     "src/store/**/*",
     "src/utils/**/*",

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { getPlatformAdapter } from '../../platform/registry';
 import { useSocket } from '../../store/contexts/socket-context';
 
 /**
@@ -16,26 +16,9 @@ export function useRefetchOnFocus(
   enabled: boolean,
   refetch: () => void
 ): void {
-  const appState = useRef(AppState.currentState);
-
   useEffect(() => {
     if (!enabled) return;
-
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      // App has come to the foreground
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        refetch();
-      }
-
-      appState.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
+    return getPlatformAdapter().onForeground(refetch);
   }, [enabled, refetch]);
 }
 
