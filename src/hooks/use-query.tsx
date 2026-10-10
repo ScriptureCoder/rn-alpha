@@ -174,9 +174,15 @@ const useQuery = (route: Route, args?: QueryOptions): QueryResult => {
       try {
         // Only fetch if not currently loading or if it's a refetch or there's an error
         if (!thread?.loading || thread?.error || isRefetch) {
-          // Abort any existing request
+          // Abort any existing request. Dropping it from the dedupe queue too
+          // is essential: without that, the getOrCreateRequest call below hands
+          // back the request we just aborted (its cleanup runs a microtask
+          // later), the abort rejection is swallowed, no new request is sent,
+          // and `loading` stays true forever. A mount fetch followed by a
+          // focus-driven refetch in the same commit hits this every time.
           if (abortControllerRef.current) {
             abortControllerRef.current.abort();
+            cancelRequest(key);
           }
 
           // Create new abort controller for this request

@@ -1542,6 +1542,7 @@ var useQuery = (route, args) => {
         if (!(thread == null ? void 0 : thread.loading) || (thread == null ? void 0 : thread.error) || isRefetch) {
           if (abortControllerRef.current) {
             abortControllerRef.current.abort();
+            cancelRequest(key);
           }
           abortControllerRef.current = new AbortController();
           setThread(true);
